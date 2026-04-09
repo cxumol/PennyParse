@@ -3,7 +3,7 @@ name = "pennyparse"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.135.3",
     "typer>=0.24.1",
@@ -12,6 +12,17 @@ dependencies = [
 
 [project.scripts]
 pennyparse = "pennyparse:main"
+
+[project.optional-dependencies]
+pdf = [
+    "pymupdf>=1.27.2.2",
+]
+docx = [
+    "pypandoc-binary>=1.17",
+]
+full = [
+    "pennyparse[pdf,docx]",
+]
 
 [build-system]
 requires = ["uv_build>=0.11.5,<0.12.0"]
