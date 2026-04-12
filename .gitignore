@@ -17,4 +17,6 @@ wheels/
 
 # user
 
+.env
 pennyparse.settings.ini
+pennyparse.toolbox_user.txt

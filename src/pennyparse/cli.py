@@ -6,7 +6,7 @@ app = typer.Typer(name="pennyparse", help="PennyParse CLI - Agentic Document Par
 
 @app.command()
 def init(name: Annotated[str, typer.Argument()] = "World"):
-    """Initialize prompts with current config files."""
+    """Initialize """
     pass
 
 

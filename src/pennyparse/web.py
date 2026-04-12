@@ -1,4 +1,4 @@
-import os
+from .config import PENNYPARSE_HOST, PENNYPARSE_PORT
 import uvicorn
 
 import tempfile
@@ -6,7 +6,6 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import PlainTextResponse
-
 app = FastAPI()
 
 PANDOC_CONTENT_TYPES = {
@@ -84,8 +83,8 @@ async def pdf2txt(request: Request) -> str:
         return _pdf_text(document)
 
 
-@app.post("/extraparser/pdfmetadata")
-async def pdfmetadata(request: Request) -> dict[str, int | list[list[int | str]]]:
+@app.post("/extraparser/pdf_metadata")
+async def pdf_metadata(request: Request) -> dict[str, int | list[list[int | str]]]:
     """Extract metadata from a raw PDF request body."""
     try:
         import pymupdf
@@ -124,5 +123,5 @@ async def pandoc2txt(request: Request, fmt: str | None = None) -> str:
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host=os.getenv("PENNYPARSE_HOST", "0.0.0.0"),
-                    port=int(os.getenv("PENNYPARSE_HOST", 52026)))
+    uvicorn.run(app, host=PENNYPARSE_HOST,
+                    port=PENNYPARSE_PORT)

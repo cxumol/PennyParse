@@ -1,3 +1,0 @@
-- ToolName: pdf_metadata
-- Scope: planner
-Example:

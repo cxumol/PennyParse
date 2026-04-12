@@ -1,0 +1,96 @@
++++
+Brief: This file describes the user-defined tools for PennyParse Agents.
+For_human_user: Run `pennyparse init tool` to add following tools to `pennyparse tool [ToolName]`; you should change / add / remove following content based on what tools you have prepared.
+For_AI_assistant: This file is READ-ONLY.
++++
+
+- ToolName: hf_paddleocr_vl1.5
+- Scope: parser
+- Cost: medium
+- API:
+```shell
+curl -X POST https://paddlepaddle-paddleocr-vl-1-5-online-demo.hf.space/gradio_api/call/parse_doc -s -H "Content-Type: application/json" -d '{
+	"data": [{"path":"https://i.imgur.com/aqMBT0i.jpeg","meta":{"_type":"gradio.FileData"}},
+	true,true,true]
+	}' \
+	| awk -F'"' '{ print $4}'  \
+	| read EVENT_ID; curl -N https://paddlepaddle-paddleocr-vl-1-5-online-demo.hf.space/gradio_api/call/parse_doc/$EVENT_ID
+```
+
+---
+
+- ToolName: modelscope_
+- Scope: parser
+- Cost: medium
+- API:
+```shell
+import httpx
+data = {
+    "file_name": "document.pdf",
+    "language": "ch",
+    "page_range": "1-10",
+    "enable_table": True,
+    "is_ocr": False,
+    "enable_formula": True
+}
+with httpx.Client() as client:
+    res = client.post("https://mineru.net/api/v1/agent/parse/file", json=data)
+    result = res.json()
+    task_id = result["data"]["task_id"]
+    file_url = result["data"]["file_url"]
+    print(f"任务已创建, task_id: {task_id}")
+
+    with open("document.pdf", "rb") as f:
+        put_res = client.put(file_url, content=f.read())
+        print(f"文件上传状态: {put_res.status_code}")
+```
+
+
+---
+
+- ToolName: siliconflow_deepseekocr
+- Scope: parser
+- Cost: medium
+- Description:
+"""
+DeepSeek-OCR 支持多种场景的提示词：
+- 文档转Markdown：<image>\n<|grounding|>Convert the document to markdown.
+- 通用OCR：<image>\n<|grounding|>OCR this image.
+- 无布局提取：<image>\nFree OCR.
+- 图表解析：<image>\nParse the figure.
+- 图像描述：<image>\nDescribe this image in detail.
+- 文本定位：<image>\nLocate <|ref|>特定文字<|/ref|> in the image.
+DeepSeek-OCR 还支持 PDF URL 或 base64 编码数据:
+{
+    "role": "user",
+    "content": [
+        {
+            "type": "image_url",
+            "image_url": {
+                "url": "data:application/pdf;base64," + base64.b64encode(
+                            open("xxx.pdf", "rb").read()).decode("utf-8")
+                            }
+        },
+        {
+            "type": "text",
+            "text": "<image>\n<|grounding|>Convert the document to markdown. "
+        }
+    ]
+}
+"""
+- API:
+```shell
+curl  'https://api.siliconflow.cn/v1/chat/completions' \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer SILICONFLOW_API_KEY' \
+    -d '{"model": "deepseek-ai/DeepSeek-OCR","temperature": 0.7,
+        "messages": [{
+            "role": "user",
+            "content": [
+            {"type": "image_url","image_url": {"url": "https://example.com/example.png"}},
+            {"type": "text", "text": "<image>\n<|grounding|>Convert the document to markdown."}
+            ]
+        }]
+    }'
+```
+- Params: --image_url DATA_URL --prompt_text PROMPT
