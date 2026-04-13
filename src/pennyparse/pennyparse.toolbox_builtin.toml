@@ -1,0 +1,95 @@
+schema_version = 1
+
+claim = """
+Builtin tools run inside PennyParse and operate on local files. Optional parser backends must be installed separately.
+"""
+
+[[tool]]
+name = "img_metadata_px"
+kind = "builtin"
+scope = "planner"
+cost = "very_low"
+summary = "Read image width and height in pixels."
+entrypoint = "pennyparse.cmd.tool:img_metadata_px"
+result_kind = "json"
+availability = "python_module"
+availability_value = "PIL"
+risk_notice = "Reads a local image file and returns metadata only."
+
+[[tool.params]]
+name = "path"
+type = "path"
+required = true
+help = "Path to the input image file."
+
+[[tool]]
+name = "img_thumb"
+kind = "builtin"
+scope = "parser"
+cost = "very_low"
+summary = "Generate a PNG thumbnail with a 360x360 bounding box."
+entrypoint = "pennyparse.cmd.tool:img_thumb"
+result_kind = "binary"
+availability = "python_module"
+availability_value = "PIL"
+risk_notice = "Reads a local image file and writes raw PNG bytes to stdout."
+
+[[tool.params]]
+name = "path"
+type = "path"
+required = true
+help = "Path to the input image file."
+
+[[tool]]
+name = "pdf_metadata"
+kind = "builtin"
+scope = "planner"
+cost = "very_low"
+summary = "Extract PDF page count, word count, and table of contents."
+entrypoint = "pennyparse.cmd.tool:pdf_metadata"
+result_kind = "json"
+availability = "python_module"
+availability_value = "pymupdf"
+risk_notice = "Reads a local PDF file through PyMuPDF."
+
+[[tool.params]]
+name = "path"
+type = "path"
+required = true
+help = "Path to the input PDF file."
+
+[[tool]]
+name = "pdf2txt"
+kind = "builtin"
+scope = "parser"
+cost = "very_low"
+summary = "Extract plain text from a PDF file."
+entrypoint = "pennyparse.cmd.tool:pdf2txt"
+result_kind = "text"
+availability = "python_module"
+availability_value = "pymupdf"
+risk_notice = "Reads a local PDF file through PyMuPDF."
+
+[[tool.params]]
+name = "path"
+type = "path"
+required = true
+help = "Path to the input PDF file."
+
+[[tool]]
+name = "pandoc2txt"
+kind = "builtin"
+scope = "parser"
+cost = "very_low"
+summary = "Convert a document to plain text with pypandoc."
+entrypoint = "pennyparse.cmd.tool:pandoc2txt"
+result_kind = "text"
+availability = "python_module"
+availability_value = "pypandoc"
+risk_notice = "Reads a local document file and depends on a working Pandoc runtime."
+
+[[tool.params]]
+name = "path"
+type = "path"
+required = true
+help = "Path to the input document file."

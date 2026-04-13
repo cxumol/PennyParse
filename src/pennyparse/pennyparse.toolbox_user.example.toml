@@ -1,0 +1,172 @@
+schema_version = 1
+
+claim = """
+User-defined tools are generated Python code. They may call third-party services or local binaries.
+Users are responsible for verifying correctness, security, cost, compliance, and the safety of any secret they provide.
+"""
+
+[[tool]]
+name = "siliconflow_deepseekocr"
+kind = "user"
+scope = "parser"
+cost = "medium"
+summary = "Run DeepSeek-OCR through SiliconFlow and return extracted text."
+result_kind = "text"
+secret = ["SILICONFLOW_API_KEY"]
+
+api_reference = """
+POST https://api.siliconflow.cn/v1/chat/completions
+Authorization: Bearer $SILICONFLOW_API_KEY
+Content-Type: application/json
+
+{
+  "model": "deepseek-ai/DeepSeek-OCR",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "data:application/pdf;base64,..."
+          }
+        },
+        {
+          "type": "text",
+          "text": "<image>\\n<|grounding|>Convert the document to markdown."
+        }
+      ]
+    }
+  ]
+}
+"""
+
+notes = """
+This tool should accept local file input and adapt it into the provider request shape.
+Prefer httpx. For local files, construct a chat-completions request with one user message whose content contains both the image payload and the text prompt.
+`image_url.url` accepts regular image URL/base64 input, and DeepSeek-OCR also accepts PDF URL/base64 input. The local-path implementation should therefore support both image data URI values such as `data:image/png;base64,...` and PDF data URI values such as `data:application/pdf;base64,...`.
+`prompt_text` is important request-shape data, not generic prose. Preserve exact prompt markers when needed by the upstream model, for example:
+- <image>\n<|grounding|>Convert the document to markdown.
+- <image>\n<|grounding|>OCR this image.
+- <image>\nFree OCR.
+- <image>\nParse the figure.
+- <image>\nDescribe this image in detail.
+- <image>\nLocate <|ref|>target text<|/ref|> in the image.
+Return only the extracted text or markdown. Do not print the response body.
+"""
+
+[[tool.params]]
+name = "path"
+type = "path"
+required = true
+help = "Path to a local image or PDF."
+
+[[tool.params]]
+name = "prompt_text"
+type = "string"
+required = false
+help = "Override the OCR prompt text. Keep exact upstream markers and special tokens when required."
+
+[[tool]]
+name = "openrouter_gemma4"
+kind = "user"
+scope = "parser"
+cost = "high"
+summary = "Call OpenRouter multimodal chat completion and return text output."
+result_kind = "text"
+secret = ["OPENROUTER_API_KEY"]
+
+api_reference = """
+POST https://openrouter.ai/api/v1/chat/completions
+Authorization: Bearer $OPENROUTER_API_KEY
+"""
+
+notes = """
+Use a local image path, convert it into a data URL, and send one user message containing text and image parts.
+Return the model text only.
+"""
+
+[[tool.params]]
+name = "path"
+type = "path"
+required = true
+help = "Path to a local image file."
+
+[[tool.params]]
+name = "prompt_text"
+type = "string"
+required = false
+help = "Prompt text for the multimodal model."
+
+[[tool]]
+name = "mineru"
+kind = "user"
+scope = "parser"
+cost = "medium"
+summary = "Upload a PDF to MinerU and return the parsed markdown text."
+result_kind = "text"
+
+api_reference = """
+POST https://mineru.net/api/v1/agent/parse/file
+Content-Type: application/json
+
+{
+  "file_name": "document.pdf",
+  "language": "ch",
+  "page_range": "1-10",
+  "enable_table": true,
+  "is_ocr": false,
+  "enable_formula": true
+}
+
+PUT <file_url>
+<raw file bytes>
+
+GET https://mineru.net/api/v1/agent/parse/{task_id}
+"""
+
+notes = """
+Follow the official signed-upload flow.
+Step 1: POST JSON to `/api/v1/agent/parse/file` with `file_name` and optional parse settings. The official local-file upload example says this endpoint does not require an Authorization header.
+Step 2: read `task_id` and signed `file_url` from the response, then upload the local PDF with HTTP PUT directly to `file_url`.
+Step 3: poll `GET /api/v1/agent/parse/{task_id}` until the task reaches `done` or `failed`.
+When `state=done`, fetch the returned `markdown_url` and return the markdown body, not just the URL.
+Handle documented task states such as `waiting-file`, `uploading`, `pending`, `running`, `done`, and `failed`.
+If the remote API is unstable or cannot complete within a short smoke test, it is acceptable to mark the tool unavailable with a concrete reason.
+"""
+
+[[tool.params]]
+name = "path"
+type = "path"
+required = true
+help = "Path to a local PDF file."
+
+[[tool.params]]
+name = "language"
+type = "string"
+required = false
+help = "Optional MinerU parse language, for example `ch`."
+
+[[tool.params]]
+name = "page_range"
+type = "string"
+required = false
+help = "Optional PDF page range such as `1-10` or `5`."
+
+[[tool.params]]
+name = "enable_table"
+type = "bool"
+required = false
+help = "Whether to enable table recognition."
+
+[[tool.params]]
+name = "is_ocr"
+type = "bool"
+required = false
+help = "Whether to enable OCR for the PDF."
+
+[[tool.params]]
+name = "enable_formula"
+type = "bool"
+required = false
+help = "Whether to enable formula recognition."

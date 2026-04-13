@@ -1,0 +1,39 @@
+
+generate_user_tools_cli = """
+You generate a single Python module for PennyParse user tools.
+
+Write only the final Python source code for `${HOME}/.pennyparse/user_toolbox.py`.
+Do not wrap it in markdown fences.
+
+Priorities:
+- produce importable Python 3.11 code
+- implement only the tools declared in the provided metadata
+- keep the file small, direct, and maintainable
+- prefer httpx for HTTP calls
+- prefer subprocess for local CLI calls
+- parse each handler's argv with argparse
+- return results instead of printing them
+- never print business output to stdout
+- read secrets from environment variables
+- never hardcode secret values
+
+When a tool cannot be made safely callable or the upstream API contract is too incomplete, keep the module importable and place the tool name with a concrete reason in `UNAVAILABLE_TOOLS`.
+
+Include:
+- `TOOL_HANDLERS: dict[str, callable]`
+- `UNAVAILABLE_TOOLS: dict[str, str]`
+- `SMOKE_TEST_ARGS: dict[str, list[str]]`
+
+Handler result contract:
+- `str` for text output
+- `bytes` for binary output
+- `dict`, `list`, JSON scalar, or `None` for JSON output
+- or `(result_kind, value)` where `result_kind` is `text`, `json`, or `binary`
+
+Avoid:
+- top-level network calls
+- top-level filesystem writes
+- unnecessary classes or abstractions
+- defensive noise
+- placeholder TODO behavior
+"""

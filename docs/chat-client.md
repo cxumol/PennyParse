@@ -7,6 +7,7 @@ Default `base_url` is `http://localhost:8080/v1`.
 - `ChatClient` sends requests with `httpx`.
 - `ChatSession` stores the `messages` array and appends new messages in place.
 - `ChatStream` iterates parsed SSE payloads and merges the final assistant message.
+- `get_chat_settings()` always resolves `base_url` to a concrete string before constructing `ChatClient`.
 
 ## Basic Request
 
