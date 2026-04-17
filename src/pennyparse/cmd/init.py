@@ -15,15 +15,14 @@ from ..config import (
     ensure_user_state_dir,
     get_chat_settings,
     get_prompt_text,
+    get_user_toolbox_example_text,
     get_user_toolbox_path,
-    get_user_toolbox_metadata_path,
     get_user_toolbox_text_path,
     inject_prompt_context,
     pp_config,
 )
 from ..logger import get_logger
 from ..utils import extract_md_codeblock
-from ..utils_aigc import Txt2TomlError, USER_TOOLBOX_SCHEMA, write_inferred_user_toolbox_toml
 from .tool import (
     SAMPLE_DYNAMIC_IMPORT,
     SAMPLE_GENERATED_USER_TOOLBOX,
@@ -69,10 +68,9 @@ def run_init_tool(*, overwrite: bool, cwd: Path | None = None, home: Path | None
     logger = logger or get_logger("cmd.init")
     ensure_user_state_dir(home=home)
 
-    metadata_path = _prepare_user_toolbox_metadata(cwd=cwd, logger=logger)
-    tool_specs, metadata_path = load_user_specs(cwd=cwd, logger=logger)
-    if not metadata_path.exists():
-        raise FileNotFoundError(f"{metadata_path} not found")
+    source_path = get_user_toolbox_text_path(cwd=cwd)
+    if not source_path.exists():
+        raise FileNotFoundError(f"{source_path} not found")
     target_path = get_user_toolbox_path(home=home)
     if target_path.exists() and not overwrite:
         raise RuntimeError(f"refused to overwrite existing {target_path}")
@@ -83,13 +81,9 @@ def run_init_tool(*, overwrite: bool, cwd: Path | None = None, home: Path | None
         {
             "__sample_generated_module__": SAMPLE_GENERATED_USER_TOOLBOX.strip(),
             "__sample_dynamic_import__": SAMPLE_DYNAMIC_IMPORT.strip(),
-            "__toolbox_schema__": json.dumps(USER_TOOLBOX_SCHEMA, ensure_ascii=False, indent=2),
         },
     )
-    turn_limit = int(pp_config["aigc.agent"]["loop_turns_max"])
-    program_unavailable = _program_unavailable_reasons(tool_specs)
-    for tool_name, reason in program_unavailable.items():
-        logger.warning("Tool %s is unavailable (program_rule): %s", tool_name, reason)
+    turn_limit = int(pp_config["aigc.agent"]["max_iter"])
 
     session = ChatSession()
     session.system(static_prompt)
@@ -97,9 +91,7 @@ def run_init_tool(*, overwrite: bool, cwd: Path | None = None, home: Path | None
         _build_initial_prompt(
             cwd=cwd,
             target_path=target_path,
-            user_metadata_path=metadata_path,
-            tool_specs=tool_specs,
-            program_unavailable=program_unavailable,
+            source_path=source_path,
         )
     )
 
@@ -117,16 +109,13 @@ def run_init_tool(*, overwrite: bool, cwd: Path | None = None, home: Path | None
             logger.info("Wrote generated toolbox to %s", target_path)
 
             smoke = _smoke_test_user_tools(
-                tool_specs=tool_specs,
                 target_path=target_path,
-                program_unavailable=program_unavailable,
                 logger=logger,
             )
             summary = _build_summary(
                 target_path=target_path,
                 turn=turn,
                 turn_limit=turn_limit,
-                program_unavailable=program_unavailable,
                 smoke=smoke,
             )
 
@@ -141,38 +130,16 @@ def run_init_tool(*, overwrite: bool, cwd: Path | None = None, home: Path | None
     return summary
 
 
-def _prepare_user_toolbox_metadata(*, cwd: Path, logger) -> Path:
-    metadata_path = get_user_toolbox_metadata_path(cwd=cwd)
-    txt_path = get_user_toolbox_text_path(cwd=cwd)
-
-    if metadata_path.exists():
-        if txt_path.exists():
-            logger.info("Ignoring %s because %s already exists", txt_path, metadata_path)
-        return metadata_path
-
-    if not txt_path.exists():
-        return metadata_path
-
-    logger.info("Inferring %s from %s", metadata_path, txt_path)
-    try:
-        return write_inferred_user_toolbox_toml(txt_path, metadata_path, logger=logger)
-    except Txt2TomlError as exc:
-        logger.error("Failed to infer toolbox TOML from TXT: %s", exc)
-        raise
-
-
 def _build_initial_prompt(
     *,
     cwd: Path,
     target_path: Path,
-    user_metadata_path: Path,
-    tool_specs: list[ToolSpec],
-    program_unavailable: Mapping[str, str],
+    source_path: Path,
 ) -> str:
     prompt_sections = [
         f"Generate the Python file at: {target_path}",
         f"Working directory: {cwd}",
-        f"User metadata file: {user_metadata_path}",
+        f"User toolbox TXT file: {source_path}",
         "",
         "Builtin tool contract metadata:",
         prompt_builtin_contract_json(),
@@ -180,14 +147,11 @@ def _build_initial_prompt(
         "User toolbox runtime contract:",
         _runtime_contract_text(),
         "",
-        "User tool metadata:",
-        json.dumps([spec.to_prompt_dict() for spec in tool_specs], ensure_ascii=False, indent=2),
+        "Example user toolbox TXT style:",
+        get_user_toolbox_example_text().strip(),
         "",
-        "Program-rule unavailable tools:",
-        json.dumps(program_unavailable, ensure_ascii=False, indent=2),
-        "",
-        "Original user toolbox TOML:",
-        user_metadata_path.read_text(encoding="utf-8"),
+        "Original user toolbox TXT:",
+        source_path.read_text(encoding="utf-8"),
     ]
     return "\n".join(prompt_sections).strip()
 
@@ -212,7 +176,9 @@ def _runtime_contract_text() -> str:
 
 def _runtime_contract_header() -> str:
     return (
-        "The generated file must define TOOL_HANDLERS, UNAVAILABLE_TOOLS, and SMOKE_TEST_ARGS.\n"
+        "The generated file must define TOOL_SPECS, TOOL_HANDLERS, UNAVAILABLE_TOOLS, and SMOKE_TEST_ARGS.\n"
+        "TOOL_SPECS must be a non-empty list of dicts that faithfully describes the generated user tools.\n"
+        "Each TOOL_SPECS item must include name, kind='user', scope, cost, summary, result_kind, secret, params, api_reference, and notes.\n"
         "Every handler receives argv: list[str], parses args with argparse, and returns a result instead of printing it.\n"
         "Do not print business output to stdout. Do not hardcode secrets. Read required env vars lazily inside handlers.\n"
         "When a tool is intentionally disabled, record the reason in UNAVAILABLE_TOOLS.\n"
@@ -249,48 +215,28 @@ def _program_unavailable_reasons(tool_specs: list[ToolSpec]) -> dict[str, str]:
 
 def _smoke_test_user_tools(
     *,
-    tool_specs: list[ToolSpec],
     target_path: Path,
-    program_unavailable: Mapping[str, str],
     logger,
 ) -> dict[str, Any]:
     module, module_error = load_user_toolbox_module(module_path=target_path)
     failures: list[SmokeTestRecord] = []
     records: list[SmokeTestRecord] = []
     enabled: list[str] = []
-    unavailable = dict(program_unavailable)
+    unavailable: dict[str, str] = {}
 
     if module_error:
         logger.error("Failed to import generated toolbox: %s", module_error)
-        trace = traceback.format_exc()
-        for spec in tool_specs:
-            if spec.name in program_unavailable:
-                records.append(
-                    SmokeTestRecord(
-                        tool=spec.name,
-                        ok=False,
-                        argv=[],
-                        exit_code=1,
-                        stdout="",
-                        stderr="",
-                        exception=module_error,
-                        traceback=trace,
-                        unavailable_reason=program_unavailable[spec.name],
-                    )
-                )
-            else:
-                record = SmokeTestRecord(
-                    tool=spec.name,
-                    ok=False,
-                    argv=[],
-                    exit_code=1,
-                    stdout="",
-                    stderr="",
-                    exception=module_error,
-                    traceback=trace,
-                )
-                records.append(record)
-                failures.append(record)
+        record = SmokeTestRecord(
+            tool="__module__",
+            ok=False,
+            argv=[],
+            exit_code=1,
+            stdout="",
+            stderr="",
+            exception=module_error,
+        )
+        records.append(record)
+        failures.append(record)
         return {
             "records": records,
             "failures": failures,
@@ -299,6 +245,32 @@ def _smoke_test_user_tools(
         }
 
     assert module is not None
+    tool_specs, specs_error = load_user_specs(module=module)
+    if specs_error:
+        logger.error("Generated toolbox manifest is invalid: %s", specs_error)
+        record = SmokeTestRecord(
+            tool="__tool_specs__",
+            ok=False,
+            argv=[],
+            exit_code=1,
+            stdout="",
+            stderr="",
+            exception=specs_error,
+        )
+        records.append(record)
+        failures.append(record)
+        return {
+            "records": records,
+            "failures": failures,
+            "enabled": enabled,
+            "unavailable": unavailable,
+        }
+
+    program_unavailable = _program_unavailable_reasons(tool_specs)
+    unavailable.update(program_unavailable)
+    for tool_name, reason in program_unavailable.items():
+        logger.warning("Tool %s is unavailable (program_rule): %s", tool_name, reason)
+
     llm_unavailable = getattr(module, "UNAVAILABLE_TOOLS", {})
     if isinstance(llm_unavailable, Mapping):
         for name, reason in llm_unavailable.items():
@@ -498,14 +470,11 @@ def _build_summary(
     target_path: Path,
     turn: int,
     turn_limit: int,
-    program_unavailable: Mapping[str, str],
     smoke: Mapping[str, Any],
 ) -> dict[str, Any]:
-    unavailable = dict(program_unavailable)
-    unavailable.update(smoke["unavailable"])
     return {
         "enabled_tools": smoke["enabled"],
-        "unavailable_tools": unavailable,
+        "unavailable_tools": smoke["unavailable"],
         "user_toolbox_path": str(target_path),
         "turns_used": turn,
         "turns_limit": turn_limit,

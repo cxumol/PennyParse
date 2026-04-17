@@ -6,7 +6,6 @@ import io
 import json
 import os
 import re
-import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
@@ -14,7 +13,6 @@ from typing import Any, Callable, Iterable, Mapping
 
 from ..config import (
     get_builtin_toolbox_metadata,
-    get_user_toolbox_metadata_path,
     get_user_toolbox_path,
 )
 from ..logger import get_logger
@@ -24,6 +22,8 @@ Generate a single Python file at ${HOME}/.pennyparse/user_toolbox.py.
 
 The file must expose:
 
+- TOOL_SPECS: list[dict[str, object]]
+  Discovery metadata for the generated user tools.
 - TOOL_HANDLERS: dict[str, callable]
   Each callable receives argv: list[str].
 - UNAVAILABLE_TOOLS: dict[str, str]
@@ -54,6 +54,23 @@ import os
 
 import httpx
 
+TOOL_SPECS = [
+    {
+        "name": "example_tool",
+        "kind": "user",
+        "scope": "parser",
+        "cost": "medium",
+        "summary": "OCR a local image through the example HTTP API.",
+        "result_kind": "text",
+        "secret": ["EXAMPLE_API_KEY"],
+        "params": [
+            {"name": "path", "type": "path", "required": True, "help": "Path to a local image file."},
+            {"name": "prompt_text", "type": "string", "help": "Prompt text sent to the upstream API."},
+        ],
+        "api_reference": "POST https://example.invalid/ocr",
+        "notes": "Return only the OCR text.",
+    },
+]
 UNAVAILABLE_TOOLS = {}
 SMOKE_TEST_ARGS = {
     "example_tool": ["--path", "/tmp/example.png"],
@@ -119,9 +136,12 @@ class ToolParam:
     help: str = ""
 
     @classmethod
-    def from_toml(cls, data: Mapping[str, Any]) -> "ToolParam":
+    def from_mapping(cls, data: Mapping[str, Any]) -> "ToolParam":
+        name = str(data.get("name", "")).strip()
+        if not name:
+            raise ValueError("param name must be a non-empty string")
         return cls(
-            name=str(data["name"]),
+            name=name,
             type=str(data.get("type", "string")),
             required=bool(data.get("required", False)),
             help=str(data.get("help", "")),
@@ -149,16 +169,40 @@ class ToolSpec:
     params: list[ToolParam] = field(default_factory=list)
 
     @classmethod
-    def from_toml(cls, data: Mapping[str, Any], *, default_risk: str = "") -> "ToolSpec":
-        params = [ToolParam.from_toml(item) for item in data.get("params", []) or []]
+    def from_mapping(cls, data: Mapping[str, Any], *, default_risk: str = "") -> "ToolSpec":
+        name = str(data.get("name", "")).strip()
+        if not name:
+            raise ValueError("tool name must be a non-empty string")
+
+        kind = str(data.get("kind", "")).strip()
+        if kind not in {"builtin", "user"}:
+            raise ValueError(f"tool {name!r} has invalid kind {kind!r}")
+
+        scope = str(data.get("scope", "")).strip()
+        if not scope:
+            raise ValueError(f"tool {name!r} is missing scope")
+
+        cost = str(data.get("cost", "")).strip()
+        if not cost:
+            raise ValueError(f"tool {name!r} is missing cost")
+
+        summary = str(data.get("summary", "")).strip()
+        if not summary:
+            raise ValueError(f"tool {name!r} is missing summary")
+
+        result_kind = str(data.get("result_kind", "")).strip()
+        if result_kind not in _RESULT_KINDS:
+            raise ValueError(f"tool {name!r} has invalid result_kind {result_kind!r}")
+
+        params = [ToolParam.from_mapping(item) for item in data.get("params", []) or []]
         secret = [str(item) for item in data.get("secret", []) or []]
         return cls(
-            name=str(data["name"]),
-            kind=str(data.get("kind", "builtin")),
-            scope=str(data.get("scope", "")),
-            cost=str(data.get("cost", "")),
-            summary=str(data.get("summary", "")),
-            result_kind=str(data.get("result_kind", "text")),
+            name=name,
+            kind=kind,
+            scope=scope,
+            cost=cost,
+            summary=summary,
+            result_kind=result_kind,
             entrypoint=str(data.get("entrypoint", "")),
             availability=str(data.get("availability", "always")),
             availability_value=str(data.get("availability_value", "")),
@@ -231,17 +275,38 @@ def normalize_tool_identifier(name: str) -> str:
 def load_builtin_specs() -> list[ToolSpec]:
     catalog = get_builtin_toolbox_metadata()
     default_risk = str(catalog.get("claim", "")).strip()
-    return [ToolSpec.from_toml(item, default_risk=default_risk) for item in catalog.get("tool", []) or []]
+    return [ToolSpec.from_mapping(item, default_risk=default_risk) for item in catalog.get("tool", []) or []]
 
 
-def load_user_specs(*, cwd: Path | None = None, logger=None) -> tuple[list[ToolSpec], Path]:
-    metadata_path = get_user_toolbox_metadata_path(cwd=cwd)
-    if not metadata_path.exists():
-        return [], metadata_path
+def load_user_specs(
+    *,
+    module: ModuleType | None = None,
+    module_path: Path | None = None,
+) -> tuple[list[ToolSpec], str | None]:
+    owned_module = module
+    if owned_module is None:
+        owned_module, module_error = load_user_toolbox_module(module_path=module_path)
+        if module_error:
+            return [], module_error
 
-    catalog = tomllib.loads(metadata_path.read_text(encoding="utf-8"))
-    default_risk = str(catalog.get("claim", "")).strip() or _DEFAULT_USER_RISK
-    return [ToolSpec.from_toml(item, default_risk=default_risk) for item in catalog.get("tool", []) or []], metadata_path
+    assert owned_module is not None
+    raw_specs = getattr(owned_module, "TOOL_SPECS", None)
+    if raw_specs is None:
+        return [], "user toolbox does not expose TOOL_SPECS"
+    if not isinstance(raw_specs, list) or not raw_specs:
+        return [], "user toolbox TOOL_SPECS must be a non-empty list"
+
+    raw_risk = getattr(owned_module, "TOOLBOX_RISK_NOTICE", "")
+    default_risk = str(raw_risk).strip() or _DEFAULT_USER_RISK
+    specs: list[ToolSpec] = []
+    for index, item in enumerate(raw_specs):
+        if not isinstance(item, Mapping):
+            return [], f"user toolbox TOOL_SPECS[{index}] must be a mapping"
+        try:
+            specs.append(ToolSpec.from_mapping(item, default_risk=default_risk))
+        except ValueError as exc:
+            return [], f"user toolbox TOOL_SPECS[{index}] is invalid: {exc}"
+    return specs, None
 
 
 def load_user_toolbox_module(*, module_path: Path | None = None) -> tuple[ModuleType | None, str | None]:
@@ -273,13 +338,17 @@ def discover_builtin_tools(*, logger=None) -> list[DiscoveredTool]:
 
 def discover_user_tools(*, cwd: Path | None = None, logger=None) -> list[DiscoveredTool]:
     logger = logger or get_logger("cmd.tool")
-    specs, metadata_path = load_user_specs(cwd=cwd, logger=logger)
-    if not specs and metadata_path.exists():
-        logger.warning("No user tools declared in %s", metadata_path)
-    if not specs:
+    module, module_error = load_user_toolbox_module()
+    if module_error:
+        logger.info("Skipping user tool discovery: %s", module_error)
         return []
 
-    module, module_error = load_user_toolbox_module()
+    assert module is not None
+    specs, specs_error = load_user_specs(module=module)
+    if specs_error:
+        logger.warning("Skipping user tool discovery: %s", specs_error)
+        return []
+
     discovered: list[DiscoveredTool] = []
     for spec in specs:
         availability = _check_user_availability(spec, module=module, module_error=module_error)

@@ -9,11 +9,7 @@ from typing import Mapping, TypedDict
 PENNYPARSE_HOST = os.getenv("PENNYPARSE_HOST", "0.0.0.0")
 PENNYPARSE_PORT = int(os.getenv("PENNYPARSE_PORT", "52026"))
 
-_protocol = (
-    "http"
-    if PENNYPARSE_HOST == "localhost" or re.match(r"^\d+\.\d+\.\d+\.\d+$", PENNYPARSE_HOST)
-    else "https"
-)
+_protocol ="http"if PENNYPARSE_HOST == "localhost" or re.match(r"^\d+\.\d+\.\d+\.\d+$", PENNYPARSE_HOST)else "https"
 PENNYPARSE_BASE = f"{_protocol}://{PENNYPARSE_HOST}:{PENNYPARSE_PORT}"
 
 pp_config = configparser.ConfigParser()
@@ -60,12 +56,8 @@ def get_builtin_toolbox_metadata() -> dict:
     return read_package_toml("pennyparse.toolbox_builtin.toml")
 
 
-def get_user_toolbox_example_metadata() -> dict:
-    return read_package_toml("pennyparse.toolbox_user.example.toml")
-
-
-def get_user_toolbox_metadata_path(*, cwd: Path | None = None) -> Path:
-    return (cwd or Path.cwd()) / "pennyparse.toolbox_user.toml"
+def get_user_toolbox_example_text() -> str:
+    return read_package_text("pennyparse.toolbox_user.example.txt")
 
 
 def get_user_toolbox_text_path(*, cwd: Path | None = None) -> Path:

@@ -1,0 +1,94 @@
+This note defines three user tools for PennyParse: `siliconflow_deepseekocr`, `openrouter_gemma4`, and `mineru`.
+
+These tools are generated Python code. They may call third-party services or local binaries. Review correctness, security, cost, compliance, and every secret before use.
+
+The `siliconflow_deepseekocr` tool is a user-defined parser with medium cost. It returns plain text. It requires the `SILICONFLOW_API_KEY` environment variable.
+
+It accepts a required `path` parameter of type `path`. The path points to a local image or PDF. It also accepts an optional `prompt_text` parameter of type `string`. That parameter overrides the OCR prompt text, but exact upstream markers and special tokens must be preserved when the provider expects them.
+
+API reference for `siliconflow_deepseekocr`:
+
+POST `https://api.siliconflow.cn/v1/chat/completions`
+Authorization: `Bearer $SILICONFLOW_API_KEY`
+Content-Type: `application/json`
+
+Example request body:
+{
+  "model": "deepseek-ai/DeepSeek-OCR",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "data:application/pdf;base64,..."
+          }
+        },
+        {
+          "type": "text",
+          "text": "<image>\\n<|grounding|>Convert the document to markdown."
+        }
+      ]
+    }
+  ]
+}
+
+Implementation notes for `siliconflow_deepseekocr`:
+
+The handler should accept local file input and adapt it into the provider request shape. Prefer `httpx`. For local files, construct one chat-completions request with a single user message whose content contains both the image payload and the text prompt. `image_url.url` accepts regular image URL or base64 input, and DeepSeek-OCR also accepts PDF URL or base64 input. The local-path implementation should therefore support both image data URIs such as `data:image/png;base64,...` and PDF data URIs such as `data:application/pdf;base64,...`.
+
+`prompt_text` is important request-shape data, not generic prose. Preserve exact prompt markers when needed by the upstream model. Representative prompts include:
+- `<image>\n<|grounding|>Convert the document to markdown.`
+- `<image>\n<|grounding|>OCR this image.`
+- `<image>\nFree OCR.`
+- `<image>\nParse the figure.`
+- `<image>\nDescribe this image in detail.`
+- `<image>\nLocate <|ref|>target text<|/ref|> in the image.`
+
+Return only the extracted text or markdown. Do not print the response body.
+
+The `openrouter_gemma4` tool is a user-defined parser with high cost. It returns plain text. It requires the `OPENROUTER_API_KEY` environment variable.
+
+It accepts a required `path` parameter of type `path`. The path points to a local image file. It also accepts an optional `prompt_text` parameter of type `string`.
+
+API reference for `openrouter_gemma4`:
+
+POST `https://openrouter.ai/api/v1/chat/completions`
+Authorization: `Bearer $OPENROUTER_API_KEY`
+
+Implementation notes for `openrouter_gemma4`:
+
+Use a local image path, convert it into a data URL, and send one user message containing text and image parts. Return the model text only.
+
+The `mineru` tool is a user-defined parser with medium cost. It returns plain text.
+
+It accepts a required `path` parameter of type `path`. The path points to a local PDF file. It also accepts optional `language`, `page_range`, `enable_table`, `is_ocr`, and `enable_formula` parameters. `language` and `page_range` are strings. `enable_table`, `is_ocr`, and `enable_formula` are booleans.
+
+API reference for `mineru`:
+
+POST `https://mineru.net/api/v1/agent/parse/file`
+Content-Type: `application/json`
+
+Example request body:
+{
+  "file_name": "document.pdf",
+  "language": "ch",
+  "page_range": "1-10",
+  "enable_table": true,
+  "is_ocr": false,
+  "enable_formula": true
+}
+
+Then upload with:
+PUT `<file_url>`
+`<raw file bytes>`
+
+Then poll:
+GET `https://mineru.net/api/v1/agent/parse/{task_id}`
+
+Implementation notes for `mineru`:
+
+Follow the official signed-upload flow. Step 1: POST JSON to `/api/v1/agent/parse/file` with `file_name` and optional parse settings. The official local-file upload example says this endpoint does not require an Authorization header. Step 2: read `task_id` and signed `file_url` from the response, then upload the local PDF with HTTP PUT directly to `file_url`. Step 3: poll `GET /api/v1/agent/parse/{task_id}` until the task reaches `done` or `failed`. When `state=done`, fetch the returned `markdown_url` and return the markdown body, not just the URL. Handle documented task states such as `waiting-file`, `uploading`, `pending`, `running`, `done`, and `failed`.
+
+If the remote API is unstable or cannot complete within a short smoke test, it is acceptable to mark the tool unavailable with a concrete reason.

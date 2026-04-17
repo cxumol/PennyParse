@@ -21,17 +21,20 @@
 
 ## Discovery
 
-Builtin and user tools use the same metadata shape.
-
 - Builtin metadata: `src/pennyparse/pennyparse.toolbox_builtin.toml`
-- User metadata input: `${CWD}/pennyparse.toolbox_user.toml`
-- User metadata prose fallback: `${CWD}/pennyparse.toolbox_user.txt`
+- User toolbox source: `${CWD}/pennyparse.toolbox_user.txt`
 - Generated user runtime: `${HOME}/.pennyparse/user_toolbox.py`
 
-Input precedence:
+`pennyparse init tool` reads `${CWD}/pennyparse.toolbox_user.txt` and generates `${HOME}/.pennyparse/user_toolbox.py` directly.
 
-- if `${CWD}/pennyparse.toolbox_user.toml` exists, PennyParse uses it and ignores `${CWD}/pennyparse.toolbox_user.txt`
-- if only `${CWD}/pennyparse.toolbox_user.txt` exists, `pennyparse init tool` tries to infer and write `${CWD}/pennyparse.toolbox_user.toml`
+User tool discovery reads the generated module, not the source TXT. The module must export:
+
+- `TOOL_SPECS`
+- `TOOL_HANDLERS`
+- `UNAVAILABLE_TOOLS`
+- `SMOKE_TEST_ARGS`
+
+If `${HOME}/.pennyparse/user_toolbox.py` is missing or invalid, `pennyparse tool --list` only shows builtin tools.
 
 `pennyparse tool --list` renders:
 
@@ -47,8 +50,8 @@ Input precedence:
 Availability combines metadata checks and runtime checks:
 
 - declared secret env vars must exist and be non-empty
-- optional Python modules must be importable
-- user toolbox must be importable
+- generated user toolbox must be importable
+- generated `TOOL_SPECS` must be valid
 - required handlers must exist
 - LLM-disabled tools must carry a reason
 

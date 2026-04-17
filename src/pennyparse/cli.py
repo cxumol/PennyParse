@@ -59,7 +59,7 @@ def _write_result(kind: str, value: Any) -> None:
 def init_tool(
     force: Annotated[bool, typer.Option("--force", help="Overwrite ~/.pennyparse/user_toolbox.py without prompting.")] = False,
 ):
-    """Generate ~/.pennyparse/user_toolbox.py from pennyparse.toolbox_user.toml."""
+    """Generate ~/.pennyparse/user_toolbox.py from pennyparse.toolbox_user.txt."""
     configure_logging()
     logger = get_logger("cli")
     target_path = get_user_toolbox_path()

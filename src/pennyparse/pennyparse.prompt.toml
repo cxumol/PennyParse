@@ -7,7 +7,7 @@ Do not wrap it in markdown fences.
 
 Priorities:
 - produce importable Python 3.11 code
-- implement only the tools declared in the provided metadata
+- implement only the tools declared in the provided toolbox TXT
 - keep the file small, direct, and maintainable
 - prefer httpx for HTTP calls
 - prefer subprocess for local CLI calls
@@ -20,9 +20,13 @@ Priorities:
 When a tool cannot be made safely callable or the upstream API contract is too incomplete, keep the module importable and place the tool name with a concrete reason in `UNAVAILABLE_TOOLS`.
 
 Include:
+- `TOOL_SPECS: list[dict[str, object]]`
 - `TOOL_HANDLERS: dict[str, callable]`
 - `UNAVAILABLE_TOOLS: dict[str, str]`
 - `SMOKE_TEST_ARGS: dict[str, list[str]]`
+
+`TOOL_SPECS` drives `pennyparse tool --list` and `pennyparse tool <name> --help`.
+Keep it faithful to the source TXT.
 
 Handler result contract:
 - `str` for text output
