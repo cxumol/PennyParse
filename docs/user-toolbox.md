@@ -20,7 +20,7 @@ For each tool, describe:
 - upstream API shape
 - implementation notes and caveats
 
-After editing `${CWD}/pennyparse.toolbox_user.txt`, rerun `pennyparse init tool` so the generated runtime stays in sync.
+After editing `${HOME}/pennyparse.toolbox_user.txt` (or your `--from PATH` file), rerun `pennyparse init tools` so the generated runtime stays in sync.
 
 ## Init Flow
 
@@ -61,6 +61,10 @@ The generated module must define:
 Each handler receives `argv: list[str]`, parses its own CLI arguments, and returns data instead of printing it.
 
 The generator prompt requires the model to return the module inside a single fenced Python code block.
+
+## Developer Notes
+
+The generator agent loop is implemented in `src/pennyparse/agent/init_tools.py`.
 
 ## Risk Notice
 
