@@ -4,10 +4,11 @@
 
 ## Commands
 
-- `pennyparse tool --list`
+- `pennyparse tool --list [--scope=previewer|parser|reviewer]`
 - `pennyparse tool <toolname> [args...]`
 - `pennyparse tool <toolname> --help`
-- `pennyparse init tool`
+- `pennyparse init tools [--from PATH] [-f]`
+- `pennyparse init docs [-f]`
 - `pennyparse serve`
 
 ## Stdout / Stderr Contract
@@ -22,10 +23,10 @@
 ## Discovery
 
 - Builtin metadata: `src/pennyparse/pennyparse.toolbox_builtin.toml`
-- User toolbox source: `${CWD}/pennyparse.toolbox_user.txt`
+- User toolbox source: `${HOME}/pennyparse.toolbox_user.txt` (override with `pennyparse init tools --from ...`)
 - Generated user runtime: `${HOME}/.pennyparse/user_toolbox.py`
 
-`pennyparse init tool` reads `${CWD}/pennyparse.toolbox_user.txt` and generates `${HOME}/.pennyparse/user_toolbox.py` directly.
+`pennyparse init tools` reads the toolbox TXT and generates `${HOME}/.pennyparse/user_toolbox.py` directly.
 
 User tool discovery reads the generated module, not the source TXT. The module must export:
 
@@ -36,16 +37,10 @@ User tool discovery reads the generated module, not the source TXT. The module m
 
 If `${HOME}/.pennyparse/user_toolbox.py` is missing or invalid, `pennyparse tool --list` only shows builtin tools.
 
-`pennyparse tool --list` renders:
+`pennyparse tool --list` renders one tool per section:
 
-- `ToolName`
-- `Scope`
-- `Cost`
-- `Summary`
-- `Params`
-- `ResultKind`
-- risk notice
-- availability and reason
+- `<toolname>\tscope: <scope> cost: <cost>\t<desc>`
+- each flag on its own line: `\t--<name> <value>`
 
 Availability combines metadata checks and runtime checks:
 

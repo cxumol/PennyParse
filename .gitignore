@@ -14,10 +14,12 @@ wheels/
 # AI
 .ai/
 .codex
+.trash/
 
 # user
 
 .env
-pennyparse.settings.ini
+pennyparse.settings.toml
 pennyparse.toolbox_user.txt
+.pennyparse_memory.txt
 *.log

@@ -2,20 +2,23 @@ from __future__ import annotations
 
 import importlib
 import json
+import threading
 import sys
+from pathlib import Path
 from typing import Any
 
 import typer
 from typing_extensions import Annotated
 
-from .config import PENNYPARSE_HOST, PENNYPARSE_PORT, get_user_toolbox_path
+from .config import PENNYPARSE_HOST, PENNYPARSE_PORT, get_user_toolbox_path, pp_config
 from .logger import configure_logging, get_logger
 
 app = typer.Typer(name="pennyparse", help="PennyParse CLI", no_args_is_help=True)
 init_app = typer.Typer(name="init", help="Initialize generated assets")
 app.add_typer(init_app, name="init")
 
-_INIT_TOOL_ENTRYPOINT = "pennyparse.cmd.init:run_init_tool"
+_INIT_TOOLS_ENTRYPOINT = "pennyparse.cmd.init_tools:run_init_tools"
+_INIT_DOCS_ENTRYPOINT = "pennyparse.cmd.init_docs:run_init_docs"
 _LIST_TOOLS_ENTRYPOINT = "pennyparse.cmd.tool:list_tools"
 _RUN_TOOL_ENTRYPOINT = "pennyparse.cmd.tool:run_tool"
 _TOOL_USAGE_ERROR_ENTRYPOINT = "pennyparse.cmd.tool:ToolUsageError"
@@ -24,7 +27,7 @@ _WEB_SERVE_ENTRYPOINT = "pennyparse.web:serve"
 
 _TOOL_COMMAND_HELP = (
     "Usage:\n"
-    "  pennyparse tool --list\n"
+    "  pennyparse tool --list [--scope=previewer|parser|reviewer]\n"
     "  pennyparse tool <toolname> [args...]\n"
     "  pennyparse tool <toolname> --help\n"
 )
@@ -55,27 +58,101 @@ def _write_result(kind: str, value: Any) -> None:
     sys.stdout.flush()
 
 
-@init_app.command("tool")
-def init_tool(
-    force: Annotated[bool, typer.Option("--force", help="Overwrite ~/.pennyparse/user_toolbox.py without prompting.")] = False,
+def _readline_with_timeout(prompt: str, *, timeout_s: int) -> str | None:
+    sys.stderr.write(prompt)
+    sys.stderr.flush()
+    if timeout_s <= 0:
+        return sys.stdin.readline().strip()
+
+    holder: dict[str, str | None] = {"line": None}
+
+    def _reader() -> None:
+        try:
+            holder["line"] = sys.stdin.readline()
+        except Exception:
+            holder["line"] = ""
+
+    thread = threading.Thread(target=_reader, daemon=True)
+    thread.start()
+    thread.join(timeout_s)
+    if thread.is_alive():
+        return None
+    return (holder["line"] or "").strip()
+
+
+def _confirm_overwrite(path: Path) -> bool:
+    if not sys.stdin.isatty():
+        return False
+    timeout_s = int(pp_config.get("cli", {}).get("timeout") or 0)
+    answer = _readline_with_timeout(f"Overwrite {path}? [y/N] ", timeout_s=timeout_s)
+    if answer is None:
+        return False
+    answer = answer.strip().lower()
+    if not answer:
+        return False
+    return answer in {"y", "yes"}
+
+
+@init_app.command("tools")
+def init_tools(
+    force: Annotated[
+        bool,
+        typer.Option("--force", "-f", help="Overwrite ~/.pennyparse/user_toolbox.py without prompting."),
+    ] = False,
+    source_path: Annotated[
+        Path,
+        typer.Option(
+            "--from",
+            help="Path to pennyparse.toolbox_user.txt (default: $HOME/pennyparse.toolbox_user.txt).",
+        ),
+    ] = Path.home() / "pennyparse.toolbox_user.txt",
 ):
-    """Generate ~/.pennyparse/user_toolbox.py from pennyparse.toolbox_user.txt."""
+    """Generate ~/.pennyparse/user_toolbox.py from a toolbox TXT file."""
     configure_logging()
     logger = get_logger("cli")
     target_path = get_user_toolbox_path()
-    overwrite = force
-    if target_path.exists() and not force:
-        if sys.stdin.isatty():
-            overwrite = typer.confirm(f"Overwrite {target_path}?", default=True)
-        else:
-            overwrite = True
+    overwrite = force or (not target_path.exists()) or _confirm_overwrite(target_path)
+    if target_path.exists() and not overwrite:
+        logger.error("Refusing to overwrite existing %s (use --force to override).", target_path)
+        raise typer.Exit(code=1)
 
-    run_init_tool = resolve_entrypoint(_INIT_TOOL_ENTRYPOINT)
+    run_init_tools = resolve_entrypoint(_INIT_TOOLS_ENTRYPOINT)
     try:
-        summary = run_init_tool(overwrite=overwrite, logger=logger)
+        summary = run_init_tools(overwrite=overwrite, source_path=source_path, logger=logger)
         _write_result("json", summary)
+        logger.warning("Review %s for security before running user tools.", summary.get("result_file") or target_path)
+    except (FileNotFoundError, RuntimeError) as exc:
+        logger.error(str(exc))
+        raise typer.Exit(code=1)
     except Exception as exc:
         logger.exception("init tool failed: %s", exc)
+        raise typer.Exit(code=1)
+
+
+@init_app.command("docs")
+def init_docs(
+    force: Annotated[
+        bool,
+        typer.Option("--force", "-f", help="Overwrite ./.pennyparse_memory.txt without prompting."),
+    ] = False,
+):
+    """Initialize ./.pennyparse_memory.txt for the current docs directory."""
+    configure_logging()
+    logger = get_logger("cli")
+    target_path = Path.cwd() / ".pennyparse_memory.txt"
+    overwrite = force or (not target_path.exists()) or _confirm_overwrite(target_path)
+    if target_path.exists() and not overwrite:
+        logger.error("Refusing to overwrite existing %s (use --force to override).", target_path)
+        raise typer.Exit(code=1)
+    run_init_docs = resolve_entrypoint(_INIT_DOCS_ENTRYPOINT)
+    try:
+        summary = run_init_docs(overwrite=overwrite, logger=logger)
+        _write_result("json", summary)
+    except (FileNotFoundError, RuntimeError) as exc:
+        logger.error(str(exc))
+        raise typer.Exit(code=1)
+    except Exception as exc:
+        logger.exception("init docs failed: %s", exc)
         raise typer.Exit(code=1)
 
 

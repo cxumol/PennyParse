@@ -6,6 +6,7 @@ import io
 import json
 import os
 import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
@@ -110,6 +111,8 @@ def resolve_entrypoint(entrypoint: str):
 """
 
 _RESULT_KINDS = {"text", "json", "binary"}
+_TOOL_COST_LEVELS = ("very low", "low", "medium", "high", "very high")
+_TOOL_SCOPES = ("previewer", "parser", "reviewer")
 _DEFAULT_USER_RISK = (
     "User-defined tools may execute generated Python code and call third-party services. "
     "Review code, secrets, and upstream APIs before use."
@@ -126,6 +129,38 @@ class ToolUsageError(ToolError):
 
 class ToolUnavailableError(ToolError):
     pass
+
+
+def _normalize_cost(value: str) -> str:
+    text = value.strip().lower().replace("_", " ")
+    text = re.sub(r"\s+", " ", text)
+    aliases = {
+        "verylow": "very low",
+        "vlow": "very low",
+        "veryhigh": "very high",
+        "vhigh": "very high",
+    }
+    text = aliases.get(text, text)
+    if text in _TOOL_COST_LEVELS:
+        return text
+    raise ValueError(f"invalid cost {value!r}; expected one of: {', '.join(_TOOL_COST_LEVELS)}")
+
+
+def _normalize_scope(value: str) -> str:
+    text = value.strip().lower().replace("_", " ")
+    text = re.sub(r"\s+", " ", text)
+    aliases = {
+        "planner": "previewer",
+        "planning": "previewer",
+        "metadata": "previewer",
+        "preview": "previewer",
+        "review": "reviewer",
+        "parser": "parser",
+    }
+    text = aliases.get(text, text)
+    if text in _TOOL_SCOPES:
+        return text
+    raise ValueError(f"invalid scope {value!r}; expected one of: {', '.join(_TOOL_SCOPES)}")
 
 
 @dataclass(slots=True)
@@ -178,15 +213,17 @@ class ToolSpec:
         if kind not in {"builtin", "user"}:
             raise ValueError(f"tool {name!r} has invalid kind {kind!r}")
 
-        scope = str(data.get("scope", "")).strip()
-        if not scope:
+        raw_scope = str(data.get("scope", "")).strip()
+        if not raw_scope:
             raise ValueError(f"tool {name!r} is missing scope")
+        scope = _normalize_scope(raw_scope)
 
-        cost = str(data.get("cost", "")).strip()
-        if not cost:
+        raw_cost = str(data.get("cost", "")).strip()
+        if not raw_cost:
             raise ValueError(f"tool {name!r} is missing cost")
+        cost = _normalize_cost(raw_cost)
 
-        summary = str(data.get("summary", "")).strip()
+        summary = str(data.get("summary") or data.get("desc") or "").strip()
         if not summary:
             raise ValueError(f"tool {name!r} is missing summary")
 
@@ -195,7 +232,7 @@ class ToolSpec:
             raise ValueError(f"tool {name!r} has invalid result_kind {result_kind!r}")
 
         params = [ToolParam.from_mapping(item) for item in data.get("params", []) or []]
-        secret = [str(item) for item in data.get("secret", []) or []]
+        secret = [str(item) for item in (data.get("secret") or data.get("secrets") or [])]
         return cls(
             name=name,
             kind=kind,
@@ -257,6 +294,22 @@ class ToolAvailability:
 class DiscoveredTool:
     spec: ToolSpec
     availability: ToolAvailability
+
+
+@dataclass(slots=True)
+class ToolInstance:
+    name: str
+    enabled: bool
+    disable_reason: str
+    cost: str
+    scope: str
+    desc: str
+    secrets: list[str]
+    flags: dict[str, str]
+
+    @property
+    def __name__(self) -> str:
+        return self.name
 
 
 @dataclass(slots=True)
@@ -340,7 +393,7 @@ def discover_user_tools(*, cwd: Path | None = None, logger=None) -> list[Discove
     logger = logger or get_logger("cmd.tool")
     module, module_error = load_user_toolbox_module()
     if module_error:
-        logger.info("Skipping user tool discovery: %s", module_error)
+        logger.debug("Skipping user tool discovery: %s", module_error)
         return []
 
     assert module is not None
@@ -357,35 +410,34 @@ def discover_user_tools(*, cwd: Path | None = None, logger=None) -> list[Discove
     return discovered
 
 
-def list_tools(*, cwd: Path | None = None, logger=None) -> str:
+def list_tools(*, cwd: Path | None = None, logger=None, scope: str | None = None) -> str:
     logger = logger or get_logger("cmd.tool")
-    tools = [*discover_builtin_tools(logger=logger), *discover_user_tools(cwd=cwd, logger=logger)]
-    if not tools:
-        return "No tools discovered.\n"
+    scope_filter = scope or _read_scope_filter(sys.argv[1:])
+    if scope_filter is not None:
+        try:
+            scope_filter = _normalize_scope(scope_filter)
+        except ValueError:
+            return f"Invalid --scope {scope_filter!r}. Expected: {', '.join(_TOOL_SCOPES)}\n"
 
-    sections: list[str] = []
-    for discovered in tools:
-        spec = discovered.spec
-        availability = "yes" if discovered.availability.available else "no"
-        reason = discovered.availability.reason or "-"
-        params = ", ".join(_format_param(param) for param in spec.params) or "-"
-        sections.append(
-            "\n".join(
-                [
-                    f"ToolName: {spec.name}",
-                    f"Kind: {spec.kind}",
-                    f"Scope: {spec.scope or '-'}",
-                    f"Cost: {spec.cost or '-'}",
-                    f"Summary: {spec.summary or '-'}",
-                    f"Params: {params}",
-                    f"ResultKind: {spec.result_kind}",
-                    f"Risk: {spec.risk_notice or '-'}",
-                    f"Available: {availability}",
-                    f"UnavailableReason: {reason}",
-                ]
-            )
-        )
-    return "\n\n".join(sections) + "\n"
+    discovered = [*discover_builtin_tools(logger=logger), *discover_user_tools(cwd=cwd, logger=logger)]
+    tools = [_tool_instance(item) for item in discovered]
+    if scope_filter is not None:
+        tools = [tool for tool in tools if tool.scope == scope_filter]
+
+    lines: list[str] = []
+    for tool in tools:
+        if not tool.enabled:
+            continue
+        header = f"{tool.name}\tscope: {tool.scope} cost: {tool.cost}\t{tool.desc}"
+        if tool.flags:
+            flag_lines = [
+                f"\t--{key} {value}".rstrip()
+                for key, value in tool.flags.items()
+            ]
+            lines.append(header + "\n" + "\n".join(flag_lines))
+        else:
+            lines.append(header)
+    return "\n\n".join(lines)
 
 
 def describe_tool(name: str, *, cwd: Path | None = None, logger=None) -> str:
@@ -457,6 +509,60 @@ def _find_tool(name: str, *, cwd: Path | None = None, logger=None) -> Discovered
 def _format_param(param: ToolParam) -> str:
     token = f"{param.flag()} <{param.type}>"
     return token if param.required else f"[{token}]"
+
+
+def _read_scope_filter(argv: list[str]) -> str | None:
+    key = "--scope"
+    prefix = f"{key}="
+    for idx, token in enumerate(argv):
+        if token == key:
+            if idx + 1 < len(argv):
+                return argv[idx + 1]
+            return ""
+        if token.startswith(prefix):
+            return token[len(prefix) :]
+    return None
+
+
+def _tool_instance(discovered: DiscoveredTool) -> ToolInstance:
+    spec = discovered.spec
+    return ToolInstance(
+        name=spec.name,
+        enabled=discovered.availability.available,
+        disable_reason=discovered.availability.reason or "",
+        cost=spec.cost,
+        scope=spec.scope,
+        desc=spec.summary,
+        secrets=list(spec.secret),
+        flags=_tool_flags(spec),
+    )
+
+
+def _tool_flags(spec: ToolSpec) -> dict[str, str]:
+    flags: dict[str, str] = {}
+    for param in spec.params:
+        key = param.flag().lstrip("-")
+        flags[key] = _flag_value_example(param.type, tool_name=spec.name)
+    return flags
+
+
+def _flag_value_example(param_type: str, *, tool_name: str) -> str:
+    param_type = param_type.strip().lower()
+    if param_type == "bool":
+        return ""
+    if param_type == "path":
+        suffix = ""
+        lowered = tool_name.lower()
+        if "pdf" in lowered:
+            suffix = ".pdf"
+        elif "img" in lowered or "image" in lowered:
+            suffix = ".png"
+        return f"/path/to/file{suffix}"
+    if param_type == "int":
+        return "0"
+    if param_type == "float":
+        return "0.0"
+    return "<value>"
 
 
 def _format_tool_help(discovered: DiscoveredTool) -> str:

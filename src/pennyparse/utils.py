@@ -1,10 +1,10 @@
 import re
 
-def _extract_between(s: str, l: str, r: str, get_last: bool = True) -> str:
+def _extract_between(s: str, left: str, right: str, get_last: bool = True) -> str:
     """
-    Extract substring between regex patterns l and r (delimiters excluded).
+    Extract substring between regex patterns (delimiters excluded).
     """
-    pattern = f".*{l}(.*?){r}" if get_last else f"{l}(.*?){r}"
+    pattern = f".*{left}(.*?){right}" if get_last else f"{left}(.*?){right}"
     match = re.search(pattern, s, re.DOTALL)
     return match.group(1) if match else ""
 

@@ -1,29 +1,108 @@
-import configparser
 import importlib.resources
 import os
-import re
 import tomllib
 import string
 from pathlib import Path
-from typing import Mapping, TypedDict
+from typing import Any, Mapping, TypedDict
 
-PENNYPARSE_HOST = os.getenv("PENNYPARSE_HOST", "0.0.0.0")
-PENNYPARSE_PORT = int(os.getenv("PENNYPARSE_PORT", "52026"))
+_DEFAULT_SETTINGS_TOML = "pennyparse.settings.default.toml"
 
-_protocol ="http"if PENNYPARSE_HOST == "localhost" or re.match(r"^\d+\.\d+\.\d+\.\d+$", PENNYPARSE_HOST)else "https"
-PENNYPARSE_BASE = f"{_protocol}://{PENNYPARSE_HOST}:{PENNYPARSE_PORT}"
 
-pp_config = configparser.ConfigParser()
-with importlib.resources.as_file(
-    importlib.resources.files("pennyparse") / "pennyparse.settings.default.ini"
-) as default_path:
-    pp_config.read(str(default_path))
+def read_package_text(filename: str) -> str:
+    resource = importlib.resources.files("pennyparse") / filename
+    return resource.read_text(encoding="utf-8")
 
-_user_cfg = Path.home() / ".pennyparse" / "pennyparse.settings.ini"
-_local_cfg = Path.cwd() / "pennyparse.settings.ini"
-for cfg in (_user_cfg, _local_cfg):
-    if cfg.exists():
-        pp_config.read(str(cfg))
+
+def read_package_toml(filename: str) -> dict[str, Any]:
+    return tomllib.loads(read_package_text(filename))
+
+
+def _deep_merge(left: Mapping[str, Any], right: Mapping[str, Any]) -> dict[str, Any]:
+    merged: dict[str, Any] = dict(left)
+    for key, value in right.items():
+        if (
+            key in merged
+            and isinstance(merged[key], Mapping)
+            and isinstance(value, Mapping)
+        ):
+            merged[key] = _deep_merge(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def _read_toml_file(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    return tomllib.loads(path.read_text(encoding="utf-8"))
+
+
+def _env_overrides() -> dict[str, Any]:
+    overrides: dict[str, Any] = {}
+
+    base = os.getenv("PENNYPARSE_CHAT_BASE")
+    authkey = os.getenv("PENNYPARSE_CHAT_AUTHKEY") or os.getenv("OPENAI_API_KEY")
+    model = os.getenv("PENNYPARSE_CHAT_MODEL")
+    if base or authkey or model:
+        overrides = _deep_merge(
+            overrides,
+            {
+                "aigc": {
+                    "api": {
+                        "chatcomp": {
+                            **({"base": base} if base else {}),
+                            **({"authkey": authkey} if authkey else {}),
+                            **({"model": model} if model else {}),
+                        }
+                    }
+                }
+            },
+        )
+
+    host = os.getenv("PENNYPARSE_HOST")
+    port = os.getenv("PENNYPARSE_PORT")
+    if host or port:
+        web_overrides: dict[str, Any] = {"web": {}}
+        if host:
+            web_overrides["web"]["host"] = host
+        if port:
+            web_overrides["web"]["port"] = int(port)
+        overrides = _deep_merge(overrides, web_overrides)
+
+    cli_timeout = os.getenv("PENNYPARSE_CLI_TIMEOUT")
+    if cli_timeout:
+        overrides = _deep_merge(overrides, {"cli": {"timeout": int(cli_timeout)}})
+
+    return overrides
+
+
+def load_pp_config(
+    *,
+    cwd: Path | None = None,
+    home: Path | None = None,
+    argv_overrides: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    base = read_package_toml(_DEFAULT_SETTINGS_TOML)
+    home_cfg = _read_toml_file((home or Path.home()) / ".pennyparse" / "pennyparse.settings.toml")
+    local_cfg = _read_toml_file((cwd or Path.cwd()) / "pennyparse.settings.toml")
+
+    merged = _deep_merge(base, home_cfg)
+    merged = _deep_merge(merged, local_cfg)
+
+    if argv_overrides is not None:
+        if _env_overrides():
+            raise RuntimeError("config override source must be either env vars or argv, not both")
+        merged = _deep_merge(merged, argv_overrides)
+        return merged
+
+    return _deep_merge(merged, _env_overrides())
+
+
+def _coerce_web_setting(pp_cfg: Mapping[str, Any], key: str) -> Any:
+    web = pp_cfg.get("web")
+    if isinstance(web, Mapping):
+        return web.get(key)
+    return None
 
 
 class ChatSettings(TypedDict):
@@ -32,13 +111,17 @@ class ChatSettings(TypedDict):
     model: str | None
 
 
-def read_package_text(filename: str) -> str:
-    resource = importlib.resources.files("pennyparse") / filename
-    return resource.read_text(encoding="utf-8")
+pp_config = load_pp_config()
 
+_host = _coerce_web_setting(pp_config, "host")
+if not isinstance(_host, str) or not _host.strip():
+    raise RuntimeError("web.host must be configured in pennyparse.settings.default.toml")
+PENNYPARSE_HOST = _host.strip()
 
-def read_package_toml(filename: str) -> dict:
-    return tomllib.loads(read_package_text(filename))
+_port = _coerce_web_setting(pp_config, "port")
+if not isinstance(_port, int):
+    raise RuntimeError("web.port must be configured in pennyparse.settings.default.toml")
+PENNYPARSE_PORT = int(_port)
 
 
 def read_prompt_catalog() -> dict:
@@ -76,21 +159,30 @@ def ensure_user_state_dir(*, home: Path | None = None) -> Path:
 
 
 def get_chat_settings() -> ChatSettings:
-    section = pp_config["aigc.api.chatcomp"]
-    base_url = os.getenv("PENNYPARSE_CHAT_BASE") or section.get("base") or "http://localhost:8080/v1"
-    if base_url == "https://example.com/v1":
-        base_url = "http://localhost:8080/v1"
+    aigc = pp_config.get("aigc")
+    if not isinstance(aigc, Mapping):
+        raise RuntimeError("missing [aigc] config")
+    api = aigc.get("api")
+    if not isinstance(api, Mapping):
+        raise RuntimeError("missing [aigc.api] config")
+    chat = api.get("chatcomp")
+    if not isinstance(chat, Mapping):
+        raise RuntimeError("missing [aigc.api.chatcomp] config")
 
-    api_key = (
-        os.getenv("PENNYPARSE_CHAT_AUTHKEY")
-        or os.getenv("OPENAI_API_KEY")
-        or section.get("authkey")
-        or None
-    )
-    if api_key == "sk-example":
+    base_url = str(chat.get("base") or "").strip()
+    if not base_url:
+        raise RuntimeError("aigc.api.chatcomp.base is required")
+
+    authkey = chat.get("authkey")
+    api_key = str(authkey).strip() if authkey is not None else ""
+    if not api_key:
         api_key = None
 
-    model = os.getenv("PENNYPARSE_CHAT_MODEL") or section.get("model") or None
+    model_value = chat.get("model")
+    model = str(model_value).strip() if model_value is not None else ""
+    if not model:
+        model = None
+
     return {"base_url": base_url, "api_key": api_key, "model": model}
 
 

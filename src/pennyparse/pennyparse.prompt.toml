@@ -2,8 +2,7 @@
 generate_user_tools_cli = """
 You generate a single Python module for PennyParse user tools.
 
-Write only the final Python source code for `${HOME}/.pennyparse/user_toolbox.py`.
-Do not wrap it in markdown fences.
+Return exactly one ```python fenced code block containing the full module, with no prose before or after it.
 
 Priorities:
 - produce importable Python 3.11 code
@@ -40,4 +39,10 @@ Avoid:
 - unnecessary classes or abstractions
 - defensive noise
 - placeholder TODO behavior
+
+Reference module sketch:
+${__sample_generated_module__}
+
+Dynamic import helper sketch:
+${__sample_dynamic_import__}
 """

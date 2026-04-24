@@ -1,6 +1,6 @@
 # User Toolbox
 
-`pennyparse.toolbox_user.txt` is the only user-authored source file for user tools. `pennyparse init tool` reads that TXT directly and generates `${HOME}/.pennyparse/user_toolbox.py`.
+`pennyparse.toolbox_user.txt` is the only user-authored source file for user tools. `pennyparse init tools` reads that TXT directly and generates `${HOME}/.pennyparse/user_toolbox.py`.
 
 ## Source Text
 
@@ -24,9 +24,9 @@ After editing `${CWD}/pennyparse.toolbox_user.txt`, rerun `pennyparse init tool`
 
 ## Init Flow
 
-`pennyparse init tool` runs a multi-turn loop:
+`pennyparse init tools` runs a multi-turn loop:
 
-1. read `${CWD}/pennyparse.toolbox_user.txt`
+1. read `${HOME}/pennyparse.toolbox_user.txt` (or `--from PATH`)
 2. read `src/pennyparse/pennyparse.prompt.toml`
 3. assemble builtin tool metadata, runtime contract, example TXT style, and the source TXT
 4. call the configured chat-completions endpoint
