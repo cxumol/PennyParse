@@ -34,10 +34,9 @@ After editing `${HOME}/pennyparse.toolbox_user.txt` (or your `--from PATH` file)
 6. import the generated module
 7. load `TOOL_SPECS` from the generated module
 8. mark tools unavailable when declared secrets are missing
-9. smoke test generated handlers with local demo assets
-10. capture stdout, stderr, exit code, and exception details
-11. feed failures back into the next repair turn
-12. stop when remaining enabled tools pass or the loop limit is reached
+9. validate that remaining enabled tools expose handlers
+10. feed validation failures back into the next repair turn
+11. stop when the generated runtime contract is valid or the loop limit is reached
 
 The final stdout result is a JSON summary containing:
 
@@ -54,7 +53,6 @@ The generated module must define:
 - `TOOL_SPECS`
 - `TOOL_HANDLERS`
 - `UNAVAILABLE_TOOLS`
-- `SMOKE_TEST_ARGS`
 
 `TOOL_SPECS` drives `pennyparse tool --list` and `pennyparse tool <name> --help`. It must stay faithful to the source TXT.
 

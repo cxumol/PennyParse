@@ -138,16 +138,36 @@ content = parse_by_file("./document.pdf")
 
 ---
 
-paddleOCR offical demo api
+PaddleOCR-VL compatible HTTP API sketch
 
-curl -X POST https://paddlepaddle-paddleocr-vl-1-5-online-demo.hf.space/gradio_api/call/parse_doc -s -H "Content-Type: application/json" -d '{
-	"data": [
-			{"path":"https://github.com/gradio-app/gradio/raw/main/test/test_files/sample_file.pdf","meta":{"_type":"gradio.FileData"}},
-			true,
-			true,
-			true
-	]}' \
-	| awk -F'"' '{ print $4}'  \
-	| read EVENT_ID; curl -N https://paddlepaddle-paddleocr-vl-1-5-online-demo.hf.space/gradio_api/call/parse_doc/$EVENT_ID
+Tool name: paddleocr_vl_parse
+Scope: parser
+Cost: high
+Result kind: text
+Secret: PADDLEOCR_VL_API_KEY
 
-File inputs: POST https://paddlepaddle-paddleocr-vl-1-5-online-demo.hf.space/gradio_api/upload -F "files=@file.ext", use as: {"path": "<returned-path>", "meta": {"_type": "gradio.FileData"}, "orig_name": "file.ext"}
+Upload local file:
+
+POST `https://ocr-provider.example/v1/files`
+Authorization: `Bearer $PADDLEOCR_VL_API_KEY`
+Content-Type: `multipart/form-data`
+
+Field:
+- `file`: local PDF or image file
+
+Parse uploaded file:
+
+POST `https://ocr-provider.example/v1/parse`
+Authorization: `Bearer $PADDLEOCR_VL_API_KEY`
+Content-Type: `application/json`
+
+Example request body:
+{
+  "file_id": "<uploaded-file-id>",
+  "output_format": "markdown",
+  "ocr": true,
+  "table": true,
+  "formula": true
+}
+
+Return the parsed markdown text from the provider response.

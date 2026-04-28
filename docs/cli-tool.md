@@ -33,7 +33,6 @@ User tool discovery reads the generated module, not the source TXT. The module m
 - `TOOL_SPECS`
 - `TOOL_HANDLERS`
 - `UNAVAILABLE_TOOLS`
-- `SMOKE_TEST_ARGS`
 
 If `${HOME}/.pennyparse/user_toolbox.py` is missing or invalid, `pennyparse tool --list` only shows builtin tools.
 

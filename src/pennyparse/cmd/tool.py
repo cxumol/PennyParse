@@ -29,9 +29,6 @@ The file must expose:
   Each callable receives argv: list[str].
 - UNAVAILABLE_TOOLS: dict[str, str]
   When the model decides a tool should stay disabled, write the reason here.
-- SMOKE_TEST_ARGS: dict[str, list[str]]
-  Optional CLI argv used by pennyparse init tool for weak acceptance.
-
 Handler return contract:
 
 - str for text results
@@ -73,9 +70,6 @@ TOOL_SPECS = [
     },
 ]
 UNAVAILABLE_TOOLS = {}
-SMOKE_TEST_ARGS = {
-    "example_tool": ["--path", "/tmp/example.png"],
-}
 
 
 def tool_example_tool(argv: list[str]) -> str:
@@ -318,13 +312,6 @@ class ToolExecutionResult:
     value: Any
 
 
-def normalize_tool_identifier(name: str) -> str:
-    normalized = re.sub(r"[^0-9a-zA-Z_]+", "_", name.strip())
-    if normalized and normalized[0].isdigit():
-        normalized = f"tool_{normalized}"
-    return normalized.lower()
-
-
 def load_builtin_specs() -> list[ToolSpec]:
     catalog = get_builtin_toolbox_metadata()
     default_risk = str(catalog.get("claim", "")).strip()
@@ -374,7 +361,7 @@ def load_user_toolbox_module(*, module_path: Path | None = None) -> tuple[Module
     module = importlib.util.module_from_spec(spec)
     try:
         spec.loader.exec_module(module)
-    except Exception as exc:  # pragma: no cover - error path exercised by smoke tests
+    except Exception as exc:  # pragma: no cover - import failures depend on generated user code
         return None, f"failed to import {path}: {exc!r}"
     return module, None
 
@@ -687,14 +674,6 @@ def _resolve_user_handler(module: ModuleType, tool_name: str) -> Callable[[list[
         handler = handlers.get(tool_name)
         if callable(handler):
             return handler
-
-    func = getattr(module, f"tool_{normalize_tool_identifier(tool_name)}", None)
-    if callable(func):
-        return func
-
-    run_tool_func = getattr(module, "run_tool", None)
-    if callable(run_tool_func):
-        return lambda argv: run_tool_func(tool_name, argv)
     return None
 
 

@@ -28,7 +28,7 @@ Toolbox TXT interpretation:
 - preserve exact upstream prompt markers and special tokens when a param such as `prompt_text`, `instruction`, or `query` is request-shape data
 - convert local files to the provider's required upload, binary, multipart, URL, or base64 data-url representation
 - return only extracted text, markdown, binary bytes, or structured JSON according to the declared result kind
-- if a remote API is too unstable or underspecified for safe smoke testing, mark the tool unavailable with a concrete reason
+- if a remote API is too unstable or underspecified for safe runtime use, mark the tool unavailable with a concrete reason
 
 When a tool cannot be made safely callable or the upstream API contract is too incomplete, keep the module importable and place the tool name with a concrete reason in `UNAVAILABLE_TOOLS`.
 
@@ -36,7 +36,6 @@ Include:
 - `TOOL_SPECS: list[dict[str, object]]`
 - `TOOL_HANDLERS: dict[str, callable]`
 - `UNAVAILABLE_TOOLS: dict[str, str]`
-- `SMOKE_TEST_ARGS: dict[str, list[str]]`
 
 `TOOL_SPECS` drives `pennyparse tool --list` and `pennyparse tool <name> --help`.
 Keep it faithful to the source TXT.
