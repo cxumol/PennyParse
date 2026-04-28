@@ -10,7 +10,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable, Iterable, Mapping
+from typing import Any, Callable, Iterable, Mapping, cast
 
 from ..config import (
     get_builtin_toolbox_metadata,
@@ -29,6 +29,7 @@ The file must expose:
   Each callable receives argv: list[str].
 - UNAVAILABLE_TOOLS: dict[str, str]
   When the model decides a tool should stay disabled, write the reason here.
+
 Handler return contract:
 
 - str for text results
@@ -343,7 +344,7 @@ def load_user_specs(
         if not isinstance(item, Mapping):
             return [], f"user toolbox TOOL_SPECS[{index}] must be a mapping"
         try:
-            specs.append(ToolSpec.from_mapping(item, default_risk=default_risk))
+            specs.append(ToolSpec.from_mapping(cast(Mapping[str, Any], item), default_risk=default_risk))
         except ValueError as exc:
             return [], f"user toolbox TOOL_SPECS[{index}] is invalid: {exc}"
     return specs, None

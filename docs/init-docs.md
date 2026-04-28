@@ -2,6 +2,8 @@
 
 `pennyparse init docs` scans the current directory, enriches file metadata with available previewer tools, groups files, and writes `./.pennyparse_memory.txt`.
 
+The root `pennyparse.log` runtime file is skipped during scanning.
+
 ## Prerequisites
 
 - Generate the user toolbox first:

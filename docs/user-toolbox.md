@@ -45,6 +45,7 @@ The final stdout result is a JSON summary containing:
 - generated file path
 - turns used
 - log path
+- validation records
 
 ## Runtime Contract
 

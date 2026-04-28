@@ -120,6 +120,8 @@ def _walk_files(*, cwd: Path, ignore_ext: set[str], ignore_folder: set[str]) -> 
             if filename.startswith("."):
                 continue
             path = root_path / filename
+            if root_path == cwd and filename == "pennyparse.log":
+                continue
             if not path.is_file():
                 continue
             rel_path = path.relative_to(cwd).as_posix()

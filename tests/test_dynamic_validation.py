@@ -117,8 +117,9 @@ class InitDocsTests(unittest.TestCase):
             home = Path(home_raw)
             fixtures = cwd / "fixtures"
             fixtures.mkdir()
-            copied_pdf = shutil.copy2(pdf_asset, fixtures / pdf_asset.name)
-            copied_image = shutil.copy2(image_asset, fixtures / image_asset.name)
+            copied_pdf = Path(shutil.copy2(pdf_asset, fixtures / pdf_asset.name))
+            copied_image = Path(shutil.copy2(image_asset, fixtures / image_asset.name))
+            (cwd / "pennyparse.log").write_text("runtime log\n", encoding="utf-8")
 
             _write_fake_user_toolbox(home)
             _write_fake_settings(home)
@@ -146,6 +147,7 @@ class InitDocsTests(unittest.TestCase):
             self.assertEqual(memory["cwd"], str(cwd.resolve()))
             self.assertIn(rel_pdf, records)
             self.assertIn(rel_image, records)
+            self.assertNotIn("pennyparse.log", records)
             self.assertEqual(records[rel_image]["meta"]["image"]["width"], tool_cmd.img_metadata_px(["--path", str(copied_image)])["width"])
 
             if importlib.util.find_spec("pymupdf") is not None:
