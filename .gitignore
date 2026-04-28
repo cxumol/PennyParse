@@ -6,6 +6,8 @@ dist/
 wheels/
 *.egg-info
 
+.ruff_cache
+
 # Virtual environments
 .venv
 
@@ -23,3 +25,4 @@ pennyparse.settings.toml
 pennyparse.toolbox_user.txt
 .pennyparse_memory.txt
 *.log
+.pennyparse
