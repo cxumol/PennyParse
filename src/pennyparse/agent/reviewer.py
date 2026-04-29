@@ -184,7 +184,7 @@ def _review_with_llm(
     )
 
     last_audit: _PatchAudit | None = None
-    with ChatClient(**dict(chat_settings), timeout=30.0) as client:
+    with ChatClient(**dict(chat_settings)) as client:
         for _ in range(max_iter):
             assistant = client.complete(
                 session,

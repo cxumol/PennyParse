@@ -221,7 +221,7 @@ class ChatClient:
         model: str | None = None,
         api_key: str | None = None,
         base_url: str = "http://localhost:8080/v1",
-        timeout: float | httpx.Timeout | None = 60.0,
+        timeout: float | httpx.Timeout | None = 1234.0,
         headers: Mapping[str, str] | None = None,
         client: httpx.Client | None = None,
     ) -> None:

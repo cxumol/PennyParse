@@ -241,7 +241,7 @@ def _group_with_llm(
     session.user(json.dumps({"files": files}, ensure_ascii=False))
 
     try:
-        with ChatClient(**dict(chat_settings), timeout=10.0) as client:
+        with ChatClient(**dict(chat_settings)) as client:
             assistant = client.complete(session, temperature=0)
     except Exception as exc:
         logger.info("LLM grouping skipped: %s", exc)

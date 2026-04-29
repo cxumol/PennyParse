@@ -31,7 +31,7 @@ PENNYPARSE_CHAT_AUTHKEY=your-key
 - `src/pennyparse/config.py`: layered settings, `.env`, and environment overrides.
 - `src/pennyparse/cmd/`: command implementations for init, tools, and run.
 - `src/pennyparse/agent/`: model-facing loops for tool generation, parsing, and review.
-- `src/pennyparse/_client.py`: OpenAI-compatible chat-completions client.
+- `src/pennyparse/_client.py`: OpenAI-compatible chat-completions client with a 1234 second default request timeout.
 - `src/pennyparse/utils_aigc.py`: shared retry and tool-call loop helpers.
 - `tests/`: dynamic unit tests and manual end-to-end script.
 

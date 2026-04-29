@@ -138,7 +138,7 @@ def _summarize_batch(
         )
     )
     try:
-        with ChatClient(**settings, timeout=15.0) as client:
+        with ChatClient(**settings) as client:
             message = complete_with_retry(
                 client,
                 session,
