@@ -16,7 +16,7 @@ In this repository's lightweight environment, use the locked project environment
 UV_CACHE_DIR=/tmp/uv-cache uv run --extra pdf python -m unittest discover -s tests
 ```
 
-The dynamic tests create temporary fake `cwd` and `HOME` directories, write a minimal fake user toolbox there, and verify `pennyparse init docs` writes `.pennyparse_memory.txt`.
+The dynamic tests create temporary fake `cwd` and `HOME` directories, write a minimal fake user toolbox there, and verify `pennyparse init docs` writes natural-language `.pennyparse_memory.txt`.
 
 Parser tests use discovered demo assets and skip optional PDF assertions when the matching backend is not installed.
 

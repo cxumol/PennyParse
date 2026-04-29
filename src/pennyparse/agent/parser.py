@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any, Mapping
 
 from ..config import load_pp_config
@@ -86,7 +86,7 @@ def parse_path(
     cwd: Path | None = None,
     home: Path | None = None,
     out_dir: Path | None = None,
-    memory: Mapping[str, Any] | None = None,
+    memory: str | None = None,
     pp_cfg: Mapping[str, Any] | None = None,
     logger=None,
 ) -> ParseResult:
@@ -152,7 +152,7 @@ def _candidate_tools(
     *,
     cwd: Path,
     home: Path,
-    memory: Mapping[str, Any],
+    memory: str,
     logger,
 ) -> list[tool_cmd.DiscoveredTool]:
     discovered = [
@@ -235,36 +235,45 @@ def _output_ext(pp_cfg: Mapping[str, Any]) -> str:
     return "txt"
 
 
-def _read_memory(cwd: Path) -> Mapping[str, Any]:
+def _read_memory(cwd: Path) -> str:
     path = cwd / ".pennyparse_memory.txt"
     if not path.exists():
-        return {}
-    return json.loads(path.read_text(encoding="utf-8"))
+        return ""
+    return path.read_text(encoding="utf-8")
 
 
-def _cost_baseline(source: Path, *, cwd: Path, memory: Mapping[str, Any]) -> str:
+def _cost_baseline(source: Path, *, cwd: Path, memory: str) -> str:
     rel = _relpath(source, cwd)
-    groups = memory.get("groups") if isinstance(memory, Mapping) else None
-    if not isinstance(groups, list):
+    text = memory if isinstance(memory, str) else ""
+    if not text.strip():
         return "medium"
-    for group in groups:
-        if not isinstance(group, Mapping):
-            continue
-        matched = group.get("matched") or []
-        globs = group.get("globs") or []
-        if rel in matched or _matches_any(rel, globs):
-            cost = str(group.get("cost_baseline") or "medium").strip().lower()
-            return cost if cost in _COST_ORDER else "medium"
+
+    source_markers = (rel.lower(), source.name.lower())
+    for sentence in _memory_sentences(text):
+        lowered = sentence.lower()
+        if any(marker and marker in lowered for marker in source_markers):
+            cost = _cost_from_text(sentence)
+            if cost:
+                return cost
+
+    for sentence in _memory_sentences(text):
+        if "overall" in sentence.lower():
+            cost = _cost_from_text(sentence)
+            if cost:
+                return cost
     return "medium"
 
 
-def _matches_any(path: str, patterns: Any) -> bool:
-    if isinstance(patterns, str):
-        patterns = [patterns]
-    if not isinstance(patterns, list):
-        return False
-    posix = PurePosixPath(path)
-    return any(posix.match(str(pattern)) for pattern in patterns)
+def _memory_sentences(text: str) -> list[str]:
+    return [line.strip() for line in text.splitlines() if line.strip()]
+
+
+def _cost_from_text(text: str) -> str | None:
+    lowered = text.lower()
+    for cost in sorted(_COST_ORDER, key=len, reverse=True):
+        if f"{cost} cost" in lowered or f"start from {cost}" in lowered:
+            return cost
+    return None
 
 
 def _cost_index(cost: str) -> int:
@@ -278,7 +287,7 @@ def _resolve_targets(
     *,
     paths: list[Path] | None,
     cwd: Path,
-    memory: Mapping[str, Any],
+    memory: str,
     output_dir: Path,
 ) -> list[Path]:
     if paths:
@@ -291,15 +300,6 @@ def _resolve_targets(
                 found.append(path)
         by_name = {path.resolve().as_posix(): path.resolve() for path in found}
         return [by_name[name] for name in sorted(by_name)]
-
-    memory_files = memory.get("files") if isinstance(memory, Mapping) else None
-    if isinstance(memory_files, list):
-        targets = [
-            (cwd / str(item["path"])).resolve()
-            for item in memory_files
-            if isinstance(item, Mapping) and item.get("path")
-        ]
-        return [path for path in targets if path.is_file()]
 
     return _walk_targets(cwd, cwd=cwd, output_dir=output_dir)
 

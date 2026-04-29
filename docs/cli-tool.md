@@ -69,10 +69,10 @@ The optional PDF and Pandoc tools remain listed even when their dependencies are
 `pennyparse run` parses documents and writes one result file per source file under `pennyparse_results/` by default.
 
 - With explicit paths, each file is parsed and directories are walked recursively.
-- Without explicit paths, `./.pennyparse_memory.txt` is used when present; otherwise the current directory is walked.
+- Without explicit paths, the current directory is walked; `./.pennyparse_memory.txt` is read only as natural-language parser context when present.
 - Hidden files, hidden directories, and the output directory are skipped.
 - Parser tools are chosen from available `scope=parser` tools that accept `--path`; binary results are skipped.
-- The reviewer accepts non-empty local results when no chat model is configured, and asks the configured chat model for stricter review when a model is available.
+- The reviewer accepts non-empty local results when no chat model is configured, and asks the configured chat model for stricter review when a model is available. Reviewer truncation affects only audit context; successful output keeps the complete parser text unless regex patches are applied for `minor_revision`.
 
 ## Web Shell
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import json
 import random
-from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 
@@ -48,7 +47,7 @@ def run_init_docs(
     sampling_cfg = _as_mapping(_as_mapping(pp_cfg.get("init")).get("sampling"))
 
     files = _walk_files(cwd=cwd, ignore_ext=ignore_ext, ignore_folder=ignore_folder)
-    previewer_status, enriched = _enrich_with_preview_metadata(files, cwd=cwd, home=home, logger=logger)
+    _previewer_status, enriched = _enrich_with_preview_metadata(files, cwd=cwd, home=home, logger=logger)
 
     llm_groups = _group_with_llm(enriched, chat_settings=chat_settings, logger=logger)
     if llm_groups is None:
@@ -63,19 +62,8 @@ def run_init_docs(
     groups, unmatched_count = _finalize_groups(groups, unmatched)
     groups = _add_group_stats(groups, enriched, sampling_cfg=sampling_cfg)
 
-    memory = {
-        "schema_version": 1,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "cwd": str(cwd.resolve()),
-        "result_file": str(result_path.resolve()),
-        "summary": _overall_summary(groups),
-        "previewer": previewer_status,
-        "file_count": len(enriched),
-        "files": enriched,
-        "unmatched_files": unmatched,
-        "groups": groups,
-    }
-    result_path.write_text(json.dumps(memory, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    memory = _memory_text(groups)
+    result_path.write_text(memory, encoding="utf-8")
     return {
         "ok": True,
         "result_file": str(result_path),
@@ -408,18 +396,55 @@ def _group_summary(group: Mapping[str, Any]) -> str:
     )
     if not ext_text:
         ext_text = "no files"
-    return f"{name}: {file_count} files ({ext_text}); start from {baseline} cost parsing."
+    sample_paths = _sample_paths_for_text(group)
+    sample_text = f" such as {sample_paths}" if sample_paths else ""
+    difficulty = _difficulty_text(baseline)
+    return (
+        f"{name} group contains {file_count} file(s) ({ext_text}){sample_text}; "
+        f"the filename and preview metadata suggest {difficulty} parsing difficulty; "
+        f"start from {baseline} cost parsing."
+    )
 
 
 def _overall_summary(groups: list[dict[str, Any]]) -> str:
     file_count = sum(int(group.get("file_count") or 0) for group in groups)
     if not groups:
-        return "No files found; start from medium cost parsing only after adding documents."
+        return "Overall, no files were found; start from medium cost parsing only after adding documents."
     highest = max(
         (str(group.get("cost_baseline") or "medium") for group in groups),
         key=lambda cost: _COST_LEVELS.index(cost) if cost in _COST_LEVELS else _COST_LEVELS.index("medium"),
     )
-    return f"{file_count} files grouped into {len(groups)} parsing cohorts; start from {highest} cost as the overall baseline."
+    names = ", ".join(str(group.get("name") or "group") for group in groups)
+    return (
+        f"Overall, this folder has {file_count} file(s) across {len(groups)} group(s): {names}; "
+        f"start from {highest} cost parsing as the overall baseline."
+    )
+
+
+def _memory_text(groups: list[dict[str, Any]]) -> str:
+    lines: list[str] = []
+    lines.extend(str(group.get("summary") or _group_summary(group)) for group in groups)
+    lines.append(_overall_summary(groups))
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _sample_paths_for_text(group: Mapping[str, Any]) -> str:
+    matched = group.get("matched") or []
+    if not isinstance(matched, list):
+        return ""
+    paths = [str(path) for path in matched[:3]]
+    if not paths:
+        return ""
+    suffix = " and others" if len(matched) > len(paths) else ""
+    return ", ".join(paths) + suffix
+
+
+def _difficulty_text(cost: str) -> str:
+    if cost in {"very low", "low"}:
+        return "low"
+    if cost == "medium":
+        return "moderate"
+    return "high"
 
 
 def _ext_breakdown(files: list[dict[str, Any]]) -> dict[str, int]:

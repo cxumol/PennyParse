@@ -74,7 +74,15 @@ Or override with env:
 [output]
 dir = "pennyparse_results"
 ext = "auto"
+```
+
+`pennyparse run` uses `dir` as the default output directory. `ext` may be `auto`, `txt`, `md`, or `html`; `auto` currently writes `txt`.
+
+## Reviewer Settings
+
+```toml
+[reviewer]
 max_length = 1000
 ```
 
-`pennyparse run` uses `dir` as the default output directory. `ext` may be `auto`, `txt`, `md`, or `html`; `auto` currently writes `txt`. `max_length` limits reviewer prompt input.
+`max_length` limits only the reviewer audit fragment sent to the chat model. It does not cap parser output length.

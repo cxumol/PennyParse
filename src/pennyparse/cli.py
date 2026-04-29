@@ -227,7 +227,7 @@ def tool_command(
 def run_command(
     paths: Annotated[
         list[Path] | None,
-        typer.Argument(help="Files or directories to parse. Defaults to ./.pennyparse_memory.txt when present."),
+        typer.Argument(help="Files or directories to parse. Defaults to walking the current directory."),
     ] = None,
     out_dir: Annotated[
         Path,

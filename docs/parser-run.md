@@ -10,7 +10,7 @@ pennyparse run --out-dir pennyparse_results
 pennyparse run invoice.pdf scans/
 ```
 
-When `./.pennyparse_memory.txt` exists, its file list and group cost baselines guide the run. Without memory, PennyParse walks the current directory.
+When explicit paths are omitted, PennyParse walks the current directory. If `./.pennyparse_memory.txt` exists, the parser reads its natural-language notes as soft context for tool ordering.
 
 ## Parser Selection
 
@@ -19,15 +19,15 @@ The parser agent uses available `scope=parser` tools that accept `--path` and re
 - PDF files prefer `pdf2txt`.
 - Office-style documents prefer `pandoc2txt`.
 - User parser tools can handle images and higher-cost parsing backends.
-- Group `cost_baseline` from `.pennyparse_memory.txt` is used as a soft ranking signal.
+- Natural-language cost hints from `.pennyparse_memory.txt` are used as a soft ranking signal.
 
 ## Reviewer
 
 The reviewer marks empty extraction as `major_revision`.
 
-When no chat model is configured, non-empty local extraction is accepted. When a chat model is configured, the reviewer asks it for `pass`, `minor_revision`, or `major_revision` JSON and writes the revised text for minor revisions.
+When no chat model is configured, non-empty local extraction is accepted. When a chat model is configured, the reviewer asks it for `pass`, `minor_revision`, or `major_revision` JSON.
 
-Reviewer prompt input is truncated by `[output].max_length`.
+Reviewer prompt input is truncated by `[reviewer].max_length`. This truncation is only for audit context. A `pass` result writes the parser tool's complete original text, and a `minor_revision` result writes the complete original text after applying reviewer-provided regex patches.
 
 ## Output
 

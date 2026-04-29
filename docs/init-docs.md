@@ -1,6 +1,6 @@
 # Init Docs
 
-`pennyparse init docs` scans the current directory, enriches file metadata with available previewer tools, groups files, and writes `./.pennyparse_memory.txt`.
+`pennyparse init docs` scans the current directory, enriches file metadata with available previewer tools, groups files, and writes a natural-language `./.pennyparse_memory.txt`.
 
 The root `pennyparse.log` runtime file is skipped during scanning.
 
@@ -27,14 +27,14 @@ Overwrite an existing `./.pennyparse_memory.txt`:
 pennyparse init docs --force
 ```
 
-The command prints a JSON summary to `stdout` and writes the full memory JSON to `./.pennyparse_memory.txt`.
+The command prints a JSON summary to `stdout` and writes natural-language parser context to `./.pennyparse_memory.txt`.
 
 The memory file includes:
 
-- `summary`: one natural-language overall parsing baseline
-- `groups[].summary`: one natural-language summary per group
-- `files`: machine-readable file records and metadata
-- `previewer`: availability status for builtin and user previewer tools
+- one sentence for each group, covering filename traits, estimated parsing difficulty, and the suggested starting cost baseline
+- one overall sentence covering the folder-level difficulty estimate and the suggested overall starting cost baseline
+
+The memory file is intentionally not JSON. Runtime parser selection may read it as soft context, but it must not depend on a machine-readable `files` or `groups` schema.
 
 ## Configuration
 
@@ -56,4 +56,4 @@ Some metadata enrichment is skipped unless these Python modules are importable:
 - `PIL` (image width/height)
 - `pymupdf` (PDF page/word counts)
 
-Generated user tools with `scope = "previewer"` are also discovered. If they accept `--path`, their JSON or text result is stored under `files[].meta.previewer.<tool_name>`.
+Generated user tools with `scope = "previewer"` are also discovered. If they accept `--path`, their JSON or text result can contribute to the natural-language group summaries.

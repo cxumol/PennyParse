@@ -140,21 +140,21 @@ class InitDocsTests(unittest.TestCase):
                 summary = init_docs.run_init_docs(overwrite=False, cwd=cwd, home=home)
 
             result_file = cwd / ".pennyparse_memory.txt"
-            memory = json.loads(result_file.read_text(encoding="utf-8"))
+            memory = result_file.read_text(encoding="utf-8")
             rel_pdf = copied_pdf.relative_to(cwd).as_posix()
             rel_image = copied_image.relative_to(cwd).as_posix()
-            records = {item["path"]: item for item in memory["files"]}
 
             self.assertTrue(summary["ok"])
             self.assertEqual(summary["result_file"], str(result_file))
-            self.assertEqual(memory["cwd"], str(cwd.resolve()))
-            self.assertIn(rel_pdf, records)
-            self.assertIn(rel_image, records)
-            self.assertNotIn("pennyparse.log", records)
-            self.assertEqual(records[rel_image]["meta"]["image"]["width"], tool_cmd.img_metadata_px(["--path", str(copied_image)])["width"])
+            self.assertRaises(json.JSONDecodeError, json.loads, memory)
+            self.assertIn("Overall, this folder has", memory)
+            self.assertIn("start from", memory)
+            self.assertIn(rel_pdf, memory)
+            self.assertIn(rel_image, memory)
+            self.assertNotIn("pennyparse.log", memory)
 
             if importlib.util.find_spec("pymupdf") is not None:
-                self.assertGreaterEqual(records[rel_pdf]["meta"]["pdf"]["page_count"], 1)
+                self.assertIn("pdf", memory.lower())
 
 
 class ReviewerTests(unittest.TestCase):
@@ -174,8 +174,147 @@ class ReviewerTests(unittest.TestCase):
         self.assertTrue(outcome.ok)
         self.assertEqual(outcome.status, "pass")
 
+    def test_reviewer_pass_preserves_full_text_after_truncated_audit(self) -> None:
+        with tempfile.TemporaryDirectory() as cwd_raw, tempfile.TemporaryDirectory() as home_raw:
+            cwd = Path(cwd_raw)
+            (cwd / "pennyparse.settings.toml").write_text(
+                "[reviewer]\nmax_length = 5\n",
+                encoding="utf-8",
+            )
+            seen: list[str] = []
+
+            class FakeChatClient:
+                def __init__(self, **kwargs):
+                    pass
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc_value, traceback):
+                    pass
+
+                def complete(self, session, **kwargs):
+                    seen.append(json.loads(session.messages[-1]["content"])["text"])
+                    return {
+                        "content": json.dumps(
+                            {"status": "pass", "message": "ok", "patches": []}
+                        )
+                    }
+
+            with (
+                mock.patch.dict(os.environ, {"PENNYPARSE_CHAT_MODEL": "unit-test-model"}),
+                mock.patch("pennyparse.agent.reviewer.ChatClient", FakeChatClient),
+            ):
+                outcome = reviewer_agent.review_text(
+                    "abcdeFULL_SUFFIX",
+                    cwd=cwd,
+                    home=Path(home_raw),
+                )
+
+        self.assertEqual(seen, ["abcde"])
+        self.assertEqual(outcome.status, "pass")
+        self.assertEqual(outcome.text, "abcdeFULL_SUFFIX")
+
+    def test_reviewer_minor_revision_applies_patch_to_full_text(self) -> None:
+        with tempfile.TemporaryDirectory() as cwd_raw, tempfile.TemporaryDirectory() as home_raw:
+            cwd = Path(cwd_raw)
+            (cwd / "pennyparse.settings.toml").write_text(
+                "[reviewer]\nmax_length = 8\n",
+                encoding="utf-8",
+            )
+
+            class FakeChatClient:
+                def __init__(self, **kwargs):
+                    pass
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc_value, traceback):
+                    pass
+
+                def complete(self, session, **kwargs):
+                    return {
+                        "content": json.dumps(
+                            {
+                                "status": "minor_revision",
+                                "message": "fixed typo",
+                                "patches": [
+                                    {
+                                        "pattern": "teh",
+                                        "repl": "the",
+                                        "count": 1,
+                                    }
+                                ],
+                            }
+                        )
+                    }
+
+            with (
+                mock.patch.dict(os.environ, {"PENNYPARSE_CHAT_MODEL": "unit-test-model"}),
+                mock.patch("pennyparse.agent.reviewer.ChatClient", FakeChatClient),
+            ):
+                outcome = reviewer_agent.review_text(
+                    "teh head\nbody beyond audit limit\n",
+                    cwd=cwd,
+                    home=Path(home_raw),
+                )
+
+        self.assertEqual(outcome.status, "minor_revision")
+        self.assertEqual(outcome.text, "the head\nbody beyond audit limit\n")
+
+    def test_reviewer_minor_revision_without_patch_is_major_revision(self) -> None:
+        with tempfile.TemporaryDirectory() as cwd_raw, tempfile.TemporaryDirectory() as home_raw:
+            class FakeChatClient:
+                def __init__(self, **kwargs):
+                    pass
+
+                def __enter__(self):
+                    return self
+
+                def __exit__(self, exc_type, exc_value, traceback):
+                    pass
+
+                def complete(self, session, **kwargs):
+                    return {
+                        "content": json.dumps(
+                            {"status": "minor_revision", "message": "", "text": "trimmed"}
+                        )
+                    }
+
+            with (
+                mock.patch.dict(os.environ, {"PENNYPARSE_CHAT_MODEL": "unit-test-model"}),
+                mock.patch("pennyparse.agent.reviewer.ChatClient", FakeChatClient),
+            ):
+                outcome = reviewer_agent.review_text(
+                    "complete parser text",
+                    cwd=Path(cwd_raw),
+                    home=Path(home_raw),
+                )
+
+        self.assertFalse(outcome.ok)
+        self.assertEqual(outcome.status, "major_revision")
+        self.assertEqual(outcome.text, "complete parser text")
+
 
 class ParserTests(unittest.TestCase):
+    def test_cost_baseline_reads_natural_language_memory(self) -> None:
+        with tempfile.TemporaryDirectory() as cwd_raw:
+            cwd = Path(cwd_raw)
+            source = cwd / "invoice.pdf"
+            source.write_text("body\n", encoding="utf-8")
+            memory = "\n".join(
+                [
+                    "PDF scan group contains 1 file(s) such as invoice.pdf; start from high cost parsing.",
+                    "Overall, this folder has 1 file(s); start from medium cost parsing as the overall baseline.",
+                ]
+            )
+
+            baseline = parser_agent._cost_baseline(source, cwd=cwd, memory=memory)
+
+            self.assertEqual(baseline, "high")
+            self.assertEqual(parser_agent._cost_from_text("start from very low cost parsing"), "very low")
+
     def test_parse_path_writes_output_with_user_parser_from_injected_home(self) -> None:
         with tempfile.TemporaryDirectory() as cwd_raw, tempfile.TemporaryDirectory() as home_raw:
             cwd = Path(cwd_raw)

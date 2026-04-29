@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Literal
@@ -79,9 +80,9 @@ def review_text(
 def _review_max_length(pp_cfg: Mapping[str, Any]) -> int:
     output = _as_mapping(pp_cfg.get("output"))
     reviewer = _as_mapping(pp_cfg.get("reviewer"))
-    value = output.get("max_length", reviewer.get("max_length"))
+    value = reviewer.get("max_length", output.get("max_length"))
     if value is None:
-        raise RuntimeError("output.max_length must be configured")
+        raise RuntimeError("reviewer.max_length must be configured")
     return max(1, int(value))
 
 
@@ -103,11 +104,14 @@ def _review_with_llm(
 ) -> ReviewOutcome:
     session = ChatSession()
     session.system(
-        "Review one parsed document fragment. Return JSON only with keys "
-        "status, message, and text. status MUST be one of pass, minor_revision, "
-        "major_revision. Use minor_revision only when the supplied text can be "
-        "fixed directly in the text field. Use major_revision for empty, broken, "
-        "or obviously incomplete extraction."
+        "Review one parsed document audit fragment. The supplied text may be a "
+        "truncated prefix of a longer parser result. Return JSON only with keys "
+        "status, message, and patches. status MUST be one of pass, "
+        "minor_revision, major_revision. Use minor_revision only for safe regex "
+        "patches that can be applied to the complete original parser result. "
+        "patches must be a list of objects with pattern, repl, and optional "
+        "count and flags. Do not return a revised full text. Use major_revision "
+        "for empty, broken, or obviously incomplete extraction."
     )
     session.user(
         json.dumps(
@@ -130,10 +134,17 @@ def _review_with_llm(
     status = data.get("status")
     if status not in {"pass", "minor_revision", "major_revision"}:
         raise RuntimeError(f"invalid reviewer status: {status!r}")
-    revised = str(data.get("text") or "")
     message = str(data.get("message") or "").strip()
 
-    if status == "minor_revision" and revised.strip():
+    if status == "minor_revision":
+        try:
+            revised = _apply_regex_patches(original, data.get("patches"))
+        except RuntimeError as exc:
+            return ReviewOutcome(
+                status="major_revision",
+                text=original,
+                message=message or str(exc),
+            )
         return ReviewOutcome(status="minor_revision", text=revised, message=message)
     if status == "major_revision":
         return ReviewOutcome(
@@ -150,3 +161,41 @@ def _review_with_llm(
 
 def _as_mapping(value: Any) -> Mapping[str, Any]:
     return value if isinstance(value, Mapping) else {}
+
+
+def _apply_regex_patches(text: str, patches: Any) -> str:
+    if not isinstance(patches, list) or not patches:
+        raise RuntimeError("minor_revision requires non-empty regex patches")
+
+    revised = text
+    for patch in patches:
+        item = _as_mapping(patch)
+        pattern = item.get("pattern")
+        if not isinstance(pattern, str) or not pattern:
+            raise RuntimeError("minor_revision patch requires pattern")
+        repl = item.get("repl")
+        if not isinstance(repl, str):
+            raise RuntimeError("minor_revision patch requires repl")
+        count = int(item.get("count") or 0)
+        flags = _regex_flags(item.get("flags"))
+        revised = re.sub(pattern, repl, revised, count=count, flags=flags)
+    return revised
+
+
+def _regex_flags(value: Any) -> int:
+    if value is None or value == "":
+        return 0
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        flags = 0
+        for name in re.split(r"[|,\s]+", value.strip()):
+            if not name:
+                continue
+            attr = name if name.startswith("re.") else f"re.{name}"
+            try:
+                flags |= int(getattr(re, attr.removeprefix("re.")))
+            except AttributeError as exc:
+                raise RuntimeError(f"invalid regex flag: {name}") from exc
+        return flags
+    raise RuntimeError("invalid regex flags")
