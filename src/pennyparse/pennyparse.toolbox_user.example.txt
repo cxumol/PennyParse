@@ -2,12 +2,12 @@ siliconflow_deepseekocr
 
 DeepSeek-OCR 支持多种场景的提示词(要求固定格式)：
 
-- 文档转Markdown：<image>\n<|grounding|>Convert the document to markdown.
-- 通用OCR：<image>\n<|grounding|>OCR this image.
-- 无布局提取：<image>\nFree OCR.
-- 图表解析：<image>\nParse the figure.
-- 图像描述：<image>\nDescribe this image in detail.
-- 文本定位：<image>\nLocate <|ref|>特定文字<|/ref|> in the image.
+- 文档转Markdown："<image>\n<|grounding|>Convert the document to markdown."
+- 通用OCR："<image>\n<|grounding|>OCR this image."
+- 无布局提取："<image>\nFree OCR."
+- 图表解析："<image>\nParse the figure."
+- 图像描述："<image>\nDescribe this image in detail."
+- 文本定位："<image>\nLocate <|ref|>特定文字<|/ref|> in the image."
 
 DeepSeek-OCR 还支持 PDF URL 或 base64 编码数据。
 
@@ -142,7 +142,7 @@ PaddleOCR-VL compatible HTTP API sketch
 
 Tool name: paddleocr_vl_parse
 Scope: parser
-Cost: high
+Cost: midium
 Required env var: PADDLEOCR_VL_API_KEY
 Required flag: --path /path/to/file.pdf
 
