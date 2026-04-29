@@ -76,6 +76,27 @@ copy_if_exists() {
   fi
 }
 
+copy_demo_assets() {
+  local src_dir="$REPO_DIR/demo_assets"
+  local dest_dir="$PLAYGROUND_DIR/docs"
+  local copied=0
+
+  if [[ ! -d "$src_dir" ]]; then
+    printf 'missing optional directory: %s\n' "$src_dir"
+    return
+  fi
+
+  while IFS= read -r src; do
+    cp "$src" "$dest_dir/$(basename "$src")"
+    printf 'copied %s -> %s\n' "$src" "$dest_dir/$(basename "$src")"
+    copied=$((copied + 1))
+  done < <(find "$src_dir" -maxdepth 1 -type f | sort)
+
+  if [[ "$copied" -eq 0 ]]; then
+    printf 'no demo asset files found in %s\n' "$src_dir"
+  fi
+}
+
 section "E2E Context"
 printf 'repo=%s\n' "$REPO_DIR"
 printf 'playground=%s\n' "$PLAYGROUND_DIR"
@@ -97,8 +118,7 @@ copy_if_exists "$REPO_DIR/pennyparse.toolbox_user.txt" "$PLAYGROUND_DIR/pennypar
 if [[ ! -f "$PLAYGROUND_DIR/pennyparse.toolbox_user.txt" ]]; then
   copy_if_exists "$REPO_DIR/src/pennyparse/pennyparse.toolbox_user.txt" "$PLAYGROUND_DIR/pennyparse.toolbox_user.txt"
 fi
-copy_if_exists "$REPO_DIR/demo_assets/3small.pdf" "$PLAYGROUND_DIR/docs/3small.pdf"
-copy_if_exists "$REPO_DIR/demo_assets/image1170x530cropped.jpg" "$PLAYGROUND_DIR/docs/image1170x530cropped.jpg"
+copy_demo_assets
 
 section "Sanitized Config Presence"
 if [[ -f "$PLAYGROUND_DIR/.env" ]]; then
