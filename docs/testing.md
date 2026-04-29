@@ -29,3 +29,18 @@ For end-to-end CLI checks that need chat settings, load `.env` into the command 
 ```shell
 dotenv -f .env run -- python -m pennyparse tool --list
 ```
+
+Manual end-to-end testing lives in `tests/e2e.sh`:
+
+```shell
+tests/e2e.sh
+tests/e2e.sh -d _test_playground
+```
+
+The script uses the chosen directory as both `HOME` and `CWD`, copies `.env`, the toolbox TXT, and demo assets into it, then runs the real CLI flow:
+
+- `pennyparse tool --list`
+- `pennyparse init --force --from pennyparse.toolbox_user.txt`
+- `pennyparse run docs --out-dir pennyparse_results_e2e_<timestamp>`
+
+Its console output is intentionally verbose and safe to paste into a code assistant: commands, exit codes, file lists, generated memory, result previews, log tail, and sanitized config presence are printed in labeled sections.
