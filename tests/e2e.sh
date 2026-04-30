@@ -52,6 +52,22 @@ show_file() {
   fi
 }
 
+show_sanitized_config() {
+  local path="$1"
+  local lines="${2:-120}"
+  if [[ -f "$path" ]]; then
+    printf -- '--- %s (first %s lines, sanitized) ---\n' "$path" "$lines"
+    sed -n "1,${lines}p" "$path" |
+      sed -E \
+        -e 's/^([[:space:]]*(PENNYPARSE_CHAT_AUTHKEY|OPENAI_API_KEY|.*API_KEY|.*TOKEN|.*SECRET)[[:space:]]*=[[:space:]]*).*/\1***MASKED***/I' \
+        -e 's/^([[:space:]]*authkey[[:space:]]*=[[:space:]]*).*/\1"***MASKED***"/I' \
+        -e 's/^([[:space:]]*(PENNYPARSE_CHAT_MODEL|model)[[:space:]]*=[[:space:]]*).*/\1"***SET***"/I' \
+        -e 's/^([[:space:]]*(PENNYPARSE_CHAT_BASE|base)[[:space:]]*=[[:space:]]*"?)([^"[:space:]]{0,32}).*/\1\3.../I'
+  else
+    printf -- '--- %s missing ---\n' "$path"
+  fi
+}
+
 run_step() {
   local name="$1"
   shift
@@ -114,18 +130,15 @@ uv --version 2>&1 || true
 section "Prepare Playground"
 mkdir -p "$PLAYGROUND_DIR/docs" "$PLAYGROUND_DIR/.pennyparse"
 copy_if_exists "$REPO_DIR/.env" "$PLAYGROUND_DIR/.env"
+copy_if_exists "$REPO_DIR/pennyparse.settings.toml" "$PLAYGROUND_DIR/pennyparse.settings.toml"
+copy_if_exists "$REPO_DIR/.pennyparse/pennyparse.settings.toml" "$PLAYGROUND_DIR/.pennyparse/pennyparse.settings.toml"
 copy_if_exists "$REPO_DIR/pennyparse.toolbox_user.txt" "$PLAYGROUND_DIR/pennyparse.toolbox_user.txt"
-if [[ ! -f "$PLAYGROUND_DIR/pennyparse.toolbox_user.txt" ]]; then
-  copy_if_exists "$REPO_DIR/src/pennyparse/pennyparse.toolbox_user.txt" "$PLAYGROUND_DIR/pennyparse.toolbox_user.txt"
-fi
 copy_demo_assets
 
 section "Sanitized Config Presence"
-if [[ -f "$PLAYGROUND_DIR/.env" ]]; then
-  sed -E 's/(PENNYPARSE_CHAT_AUTHKEY|OPENAI_API_KEY|.*API_KEY|.*TOKEN|.*SECRET)=.*/\1=***MASKED***/; s/(PENNYPARSE_CHAT_BASE)=([^[:space:]]{0,32}).*/\1=\2.../; s/(PENNYPARSE_CHAT_MODEL)=.*/\1=***SET***/' "$PLAYGROUND_DIR/.env"
-else
-  printf '.env missing in playground\n'
-fi
+show_sanitized_config "$PLAYGROUND_DIR/.env" 80
+show_sanitized_config "$PLAYGROUND_DIR/pennyparse.settings.toml" 80
+show_sanitized_config "$PLAYGROUND_DIR/.pennyparse/pennyparse.settings.toml" 80
 
 cd "$PLAYGROUND_DIR" || exit 1
 export HOME="$PLAYGROUND_DIR"

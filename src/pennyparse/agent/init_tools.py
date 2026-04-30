@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Mapping
+
+import httpx
 
 from .._client import ChatClient, ChatSession
 from ..config import (
@@ -91,7 +94,16 @@ def run_init_tools_agent(
     with ChatClient(**chat_settings) as client:
         for turn in range(1, turn_limit + 1):
             logger.info("Generating user toolbox, turn %s/%s", turn, turn_limit)
-            assistant = client.complete(session)
+            try:
+                assistant = client.complete(session)
+            except httpx.RequestError as exc:
+                logger.warning("Chat request failed while generating user toolbox: %s", exc)
+                return _write_static_fallback_toolbox(
+                    source_path=source_path,
+                    target_path=target_path,
+                    reason=f"chat request failed during init tools: {exc}",
+                    logger=logger,
+                )
             code = _extract_python_code(assistant.get("content"))
             target_path.write_text(code, encoding="utf-8")
             logger.info("Wrote generated toolbox to %s", target_path)
@@ -116,6 +128,93 @@ def run_init_tools_agent(
 
     assert summary is not None
     return summary
+
+
+def _write_static_fallback_toolbox(
+    *,
+    source_path: Path,
+    target_path: Path,
+    reason: str,
+    logger,
+) -> dict[str, Any]:
+    specs = _fallback_specs(source_path.read_text(encoding="utf-8"))
+    code = _fallback_module_code(specs, reason=reason)
+    target_path.write_text(code, encoding="utf-8")
+    logger.warning("Wrote unavailable fallback toolbox to %s", target_path)
+    validation = _validate_user_tools(
+        target_path=target_path,
+        result_validator=None,
+        logger=logger,
+    )
+    summary = _build_summary(target_path=target_path, turn=0, validation=validation)
+    summary["fallback_reason"] = reason
+    return summary
+
+
+def _fallback_specs(source_text: str) -> list[dict[str, Any]]:
+    names = _fallback_tool_names(source_text)
+    return [
+        {
+            "name": name,
+            "scope": "parser",
+            "cost": "medium",
+            "desc": f"Unavailable user parser generated from toolbox entry {name!r}.",
+            "secrets": _fallback_secrets_for_entry(source_text, name),
+            "flags": {"path": "/path/to/file"},
+        }
+        for name in names
+    ]
+
+
+def _fallback_tool_names(source_text: str) -> list[str]:
+    names: list[str] = []
+    for line in source_text.splitlines():
+        text = line.strip()
+        if not text or text.startswith(("-", "#")):
+            continue
+        lowered = text.lower()
+        if lowered in {"example", "examples", "例如", "使用示例"}:
+            continue
+        if (
+            "://" in text
+            or ":" in text
+            or text.startswith(("POST ", "GET ", "curl ", "import ", "def ", "BASE_URL"))
+        ):
+            continue
+        candidate = text.split()[0].strip("`：:，,。.;；()[]{}")
+        candidate = _normalize_fallback_name(candidate)
+        if candidate and candidate not in names:
+            names.append(candidate)
+    if not names:
+        names.append("user_parser")
+    return names[:8]
+
+
+def _normalize_fallback_name(value: str) -> str:
+    name = re.sub(r"\W+", "_", value.strip().lower(), flags=re.ASCII).strip("_")
+    if not name:
+        return ""
+    if name[0].isdigit():
+        name = f"tool_{name}"
+    return name
+
+
+def _fallback_secrets_for_entry(source_text: str, name: str) -> list[str]:
+    secrets = sorted(set(re.findall(r"\b[A-Z][A-Z0-9_]*(?:API_KEY|AUTHKEY|TOKEN|SECRET|KEY)\b", source_text)))
+    if name == "siliconflow_deepseekocr" and "SILICONFLOW_API_KEY" not in secrets:
+        secrets.append("SILICONFLOW_API_KEY")
+    return secrets
+
+
+def _fallback_module_code(specs: list[dict[str, Any]], *, reason: str) -> str:
+    unavailable = {str(spec["name"]): reason for spec in specs}
+    return (
+        "TOOL_SPECS = "
+        + json.dumps(specs, ensure_ascii=False, indent=4)
+        + "\n\nUNAVAILABLE_TOOLS = "
+        + json.dumps(unavailable, ensure_ascii=False, indent=4)
+        + "\n\nTOOL_HANDLERS = {}\n"
+    )
 
 
 def _build_initial_prompt(

@@ -61,6 +61,7 @@ tests/e2e.sh -d _test_playground
 ```
 
 The script uses the chosen directory as both `HOME` and `cwd`, copies test inputs, runs the real CLI flow, and prints commands, exit codes, generated memory, output previews, and log tails.
+It copies repository-local runtime inputs when present: `.env`, `pennyparse.settings.toml`, `.pennyparse/pennyparse.settings.toml`, `pennyparse.toolbox_user.txt`, and files under `demo_assets/`.
 
 ## Development Rules
 
@@ -91,3 +92,5 @@ ${HOME}/.pennyparse/user_toolbox.py
 ```
 
 For agent issues, lower the problem to the loop contract: what messages entered, what tool call or code block came back, what deterministic validator rejected, and whether the failure was fed back into the next turn.
+
+When `init tools` cannot reach the chat endpoint, it still writes an importable fallback `user_toolbox.py`. The fallback records inferred tool names as unavailable with the request failure reason. Treat this as a degraded initialization path: builtin local tools can still run, and remote user tools become active only after a successful regeneration.

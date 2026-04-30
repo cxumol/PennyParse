@@ -20,6 +20,10 @@ _PDF_SPLIT_TOOL = "pdf_pages_to_images"
 _MAX_RECURSION_DEPTH = 1
 
 
+class NoParserToolAvailable(RuntimeError):
+    pass
+
+
 @dataclass(slots=True)
 class ParseResult:
     ok: bool
@@ -63,6 +67,7 @@ def run_parser(
 
     results: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
+    skipped: list[dict[str, str]] = []
     for target in targets:
         try:
             results.append(
@@ -76,6 +81,9 @@ def run_parser(
                     logger=logger,
                 ).as_dict()
             )
+        except NoParserToolAvailable as exc:
+            skipped.append({"source_file": _relpath(target, cwd), "reason": str(exc)})
+            logger.info("Skipped %s: %s", target, exc)
         except Exception as exc:
             failures.append({"source_file": _relpath(target, cwd), "error": str(exc)})
             logger.error("Failed to parse %s: %s", target, exc)
@@ -85,8 +93,10 @@ def run_parser(
         "out_dir": str(output_dir),
         "parsed_count": len(results),
         "failed_count": len(failures),
+        "skipped_count": len(skipped),
         "results": results,
         "failures": failures,
+        "skipped": skipped,
     }
 
 
@@ -150,7 +160,7 @@ def _parse_source(
 ) -> _ParsedText:
     candidates = _candidate_tools(source, cwd=cwd, home=home, memory=memory, logger=logger)
     if not candidates:
-        raise RuntimeError(f"no parser tool is available for {source.name}")
+        raise NoParserToolAvailable(f"no parser tool is available for {source.name}")
 
     last_review: ReviewOutcome | None = None
     for discovered in candidates:

@@ -56,6 +56,8 @@ State machine:
 
 Result checks are validation targets, not repair instructions. They can report execution failures, output excerpts, or parser-quality issues. The model decides which part of `user_toolbox.py` to change: metadata, argument handling, request construction, prompt text, response parsing, cleanup, or availability.
 
+If the chat request itself fails before a module is produced, `init_tools` writes an importable fallback toolbox from conservative names inferred from the toolbox TXT. Those generated user tools are marked unavailable with the request failure reason, so `init docs` and local parsers can continue with builtin tools while preserving why the requested remote tools cannot run.
+
 The prompt asks for a full replacement on each repair turn. This keeps the generated module coherent and avoids patch stacking.
 
 ## Tool-Call Loop
@@ -84,6 +86,8 @@ The parser's outer loop is deterministic:
 5. Run candidate tools until review accepts a result.
 6. For PDFs, try one page-image fallback when text extraction fails.
 7. Write the accepted full text.
+
+Files with no available parser tool are reported as skipped. Skips are not parser failures: they mean the current toolbox set cannot handle that file type or all matching tools are unavailable.
 
 The agent contribution is indirect: initialization writes memory, review accepts or rejects results, and the loop can react by trying the next candidate or a bounded PDF fallback. The parser never gives the model direct write access to output files.
 

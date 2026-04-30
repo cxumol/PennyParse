@@ -10,6 +10,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import httpx
 from typer.testing import CliRunner
 
 
@@ -395,11 +396,57 @@ TOOL_HANDLERS = {"demo_ocr": tool_demo_ocr}
                     result_validator=result_validator,
                 )
 
-        self.assertTrue(summary["ok"])
-        self.assertEqual(summary["agent_turns"], 2)
-        self.assertIn("output-quality issues", seen_messages[1])
-        self.assertIn("parser result did not expose the extracted text directly", seen_messages[1])
-        self.assertIn('return "extracted text"', target.read_text(encoding="utf-8"))
+            self.assertTrue(summary["ok"])
+            self.assertEqual(summary["agent_turns"], 2)
+            self.assertIn("output-quality issues", seen_messages[1])
+            self.assertIn("parser result did not expose the extracted text directly", seen_messages[1])
+            self.assertIn('return "extracted text"', target.read_text(encoding="utf-8"))
+
+    def test_init_tools_agent_writes_unavailable_fallback_on_chat_network_error(self) -> None:
+        class FailingChatClient:
+            def __init__(self, **kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                pass
+
+            def complete(self, session, **kwargs):
+                raise httpx.ConnectError("network is unreachable")
+
+        with tempfile.TemporaryDirectory() as cwd_raw, tempfile.TemporaryDirectory() as home_raw:
+            cwd = Path(cwd_raw)
+            home = Path(home_raw)
+            source = cwd / "pennyparse.toolbox_user.txt"
+            target = home / ".pennyparse" / "user_toolbox.py"
+            target.parent.mkdir(parents=True)
+            source.write_text(
+                "siliconflow_deepseekocr\nAuthorization: Bearer $SILICONFLOW_API_KEY\n",
+                encoding="utf-8",
+            )
+
+            with (
+                mock.patch.dict(os.environ, {"PENNYPARSE_CHAT_MODEL": "unit-test-model"}),
+                mock.patch("pennyparse.agent.init_tools.ChatClient", FailingChatClient),
+            ):
+                summary = init_tools_agent.run_init_tools_agent(
+                    cwd=cwd,
+                    source_path=source,
+                    target_path=target,
+                )
+
+            module, module_error = tool_cmd.load_user_toolbox_module(module_path=target)
+            self.assertIsNone(module_error)
+            self.assertIsNotNone(module)
+            self.assertTrue(summary["ok"])
+            self.assertEqual(summary["agent_turns"], 0)
+            self.assertIn("fallback_reason", summary)
+            self.assertEqual(summary["usertools_failed"], ["siliconflow_deepseekocr"])
+            self.assertEqual(module.TOOL_SPECS[0]["name"], "siliconflow_deepseekocr")
+            self.assertIn("SILICONFLOW_API_KEY", module.TOOL_SPECS[0]["secrets"])
+            self.assertIn("siliconflow_deepseekocr", module.UNAVAILABLE_TOOLS)
 
 
 class InitCliTests(unittest.TestCase):
@@ -838,11 +885,12 @@ class RunCommandTests(unittest.TestCase):
             memory = memory_path.read_text(encoding="utf-8")
             self.assertTrue(summary["ok"])
             self.assertEqual(summary["parsed_count"], 2)
+            self.assertEqual(summary["skipped_count"], 0)
             self.assertEqual(summary["output_stats"]["file_count"], 2)
             self.assertTrue(memory.startswith("initial memory\n"))
             self.assertIn("a.txt等1份:fake_tool", memory)
             self.assertIn("b.txt等1份:fake_tool", memory)
-            self.assertIn("Run summary: parsed 2, failed 0, output 2 file(s)", memory)
+            self.assertIn("Run summary: parsed 2, skipped 0, failed 0, output 2 file(s)", memory)
 
 
 class ToolCallsLoopTests(unittest.TestCase):

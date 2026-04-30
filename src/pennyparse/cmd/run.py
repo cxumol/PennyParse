@@ -39,6 +39,7 @@ def run(
 
     results: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
+    skipped: list[dict[str, str]] = []
     for batch in _chunks(targets, batch_size):
         batch_summary = run_parser(
             paths=batch,
@@ -49,14 +50,17 @@ def run(
         )
         batch_results = list(batch_summary.get("results") or [])
         batch_failures = list(batch_summary.get("failures") or [])
+        batch_skipped = list(batch_summary.get("skipped") or [])
         results.extend(batch_results)
         failures.extend(batch_failures)
-        _append_memory(memory_path, _summarize_batch(batch_results, batch_failures, pp_cfg=pp_cfg))
+        skipped.extend(batch_skipped)
+        _append_memory(memory_path, _summarize_batch(batch_results, batch_failures, batch_skipped, pp_cfg=pp_cfg))
 
     output_stats = _output_stats(output_dir)
     final_line = _final_summary(
         parsed_count=len(results),
         failed_count=len(failures),
+        skipped_count=len(skipped),
         output_stats=output_stats,
     )
     _append_memory(memory_path, final_line)
@@ -66,8 +70,10 @@ def run(
         "out_dir": str(output_dir),
         "parsed_count": len(results),
         "failed_count": len(failures),
+        "skipped_count": len(skipped),
         "results": results,
         "failures": failures,
+        "skipped": skipped,
         "output_stats": output_stats,
     }
 
@@ -112,10 +118,11 @@ def _chunks(items: list[Path], size: int) -> list[list[Path]]:
 def _summarize_batch(
     results: list[dict[str, Any]],
     failures: list[dict[str, str]],
+    skipped: list[dict[str, str]],
     *,
     pp_cfg: Mapping[str, Any],
 ) -> str:
-    fallback = _fallback_batch_summary(results, failures)
+    fallback = _fallback_batch_summary(results, failures, skipped)
     settings = _chat_settings(pp_cfg)
     if not settings.get("model"):
         return fallback
@@ -133,6 +140,7 @@ def _summarize_batch(
                     for item in results
                 ],
                 "failures": failures,
+                "skipped": skipped,
             },
             ensure_ascii=False,
         )
@@ -151,7 +159,11 @@ def _summarize_batch(
     return _limit_20(text or fallback)
 
 
-def _fallback_batch_summary(results: list[dict[str, Any]], failures: list[dict[str, str]]) -> str:
+def _fallback_batch_summary(
+    results: list[dict[str, Any]],
+    failures: list[dict[str, str]],
+    skipped: list[dict[str, str]],
+) -> str:
     first_source = ""
     for item in results:
         first_source = str(item.get("source_file") or "")
@@ -159,11 +171,14 @@ def _fallback_batch_summary(results: list[dict[str, Any]], failures: list[dict[s
             break
     if not first_source and failures:
         first_source = str(failures[0].get("source_file") or "")
+    if not first_source and skipped:
+        first_source = str(skipped[0].get("source_file") or "")
     first_name = Path(first_source).name or "空批次"
     tools = sorted({str(item.get("tool") or "") for item in results if item.get("tool")})
     tool_text = ",".join(tools) if tools else "无工具"
-    total = len(results) + len(failures)
-    return _limit_20(f"{first_name}等{total}份:{tool_text}")
+    total = len(results) + len(failures) + len(skipped)
+    skip_text = f",跳过{len(skipped)}" if skipped else ""
+    return _limit_20(f"{first_name}等{total}份:{tool_text}{skip_text}")
 
 
 def _limit_20(text: str) -> str:
@@ -192,14 +207,20 @@ def _output_stats(output_dir: Path) -> dict[str, Any]:
     }
 
 
-def _final_summary(*, parsed_count: int, failed_count: int, output_stats: Mapping[str, Any]) -> str:
+def _final_summary(
+    *,
+    parsed_count: int,
+    failed_count: int,
+    skipped_count: int,
+    output_stats: Mapping[str, Any],
+) -> str:
     by_ext = output_stats.get("by_ext")
     ext_text = ""
     if isinstance(by_ext, Mapping) and by_ext:
         ext_text = "; " + ", ".join(f"{key}:{by_ext[key]}" for key in sorted(by_ext))
     return (
         "Run summary: "
-        f"parsed {parsed_count}, failed {failed_count}, "
+        f"parsed {parsed_count}, skipped {skipped_count}, failed {failed_count}, "
         f"output {output_stats.get('file_count', 0)} file(s), "
         f"{output_stats.get('byte_count', 0)} bytes"
         f"{ext_text}."
