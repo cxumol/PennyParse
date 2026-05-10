@@ -9,6 +9,8 @@ DeepSeek-OCR 支持多种场景的提示词(要求固定格式)：
 - 图像描述："<image>\nDescribe this image in detail."
 - 文本定位："<image>\nLocate <|ref|>特定文字<|/ref|> in the image."
 
+此场景下我们通常可以使用 "<image>\\nFree OCR to markdown."
+
 DeepSeek-OCR 还支持 PDF URL 或 base64 编码数据。
 
 例如
@@ -32,7 +34,7 @@ Example request body:
         },
         {
           "type": "text",
-          "text": "<image>\\n<|grounding|>Convert the document to markdown."
+          "text": "<image>\\nFree OCR to markdown."
         }
       ]
     }
@@ -135,39 +137,3 @@ def poll_result(task_id, timeout=300, interval=3):
 
 # 使用示例
 content = parse_by_file("./document.pdf")
-
----
-
-PaddleOCR-VL compatible HTTP API sketch
-
-Tool name: paddleocr_vl_parse
-Scope: parser
-Cost: midium
-Required env var: PADDLEOCR_VL_API_KEY
-Required flag: --path /path/to/file.pdf
-
-Upload local file:
-
-POST `https://ocr-provider.example/v1/files`
-Authorization: `Bearer $PADDLEOCR_VL_API_KEY`
-Content-Type: `multipart/form-data`
-
-Field:
-- `file`: local PDF or image file
-
-Parse uploaded file:
-
-POST `https://ocr-provider.example/v1/parse`
-Authorization: `Bearer $PADDLEOCR_VL_API_KEY`
-Content-Type: `application/json`
-
-Example request body:
-{
-  "file_id": "<uploaded-file-id>",
-  "output_format": "markdown",
-  "ocr": true,
-  "table": true,
-  "formula": true
-}
-
-Return the parsed markdown text from the provider response.
