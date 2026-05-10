@@ -31,13 +31,15 @@ export PENNYPARSE_CHAT_MODEL=your-model
 export PENNYPARSE_CHAT_AUTHKEY=your-key
 ```
 
-`OPENAI_API_KEY` is also accepted as the auth key. You can put the same values in `~/.pennyparse/pennyparse.settings.toml` or `./pennyparse.settings.toml`.
+`OPENAI_API_KEY` is also accepted as the auth key. You can put the same values in `~/.pennyparse/pennyparse.settings.toml` or `./pennyparse.settings.toml`. Use [../src/pennyparse/pennyparse.settings.default.toml](../src/pennyparse/pennyparse.settings.default.toml) as the configuration reference.
 
 The `full` extra includes the common local document backends. Minimal installs are possible, but most users should start with `pennyparse[full]`.
 
 ## Prepare User Tools
 
-Create a toolbox description at `${HOME}/pennyparse.toolbox_user.txt`, or pass another file with `--from`. Describe each external parser or API in plain technical prose: name, scope, cost, flags, credentials, strengths, limits, and how to call it.
+Create a toolbox description at `${HOME}/pennyparse.toolbox_user.txt`, or pass another file with `--from`. Follow the shape in [../src/pennyparse/pennyparse.toolbox_user.example.txt](../src/pennyparse/pennyparse.toolbox_user.example.txt).
+
+Describe each external parser or API in plain technical prose: name, scope, cost, flags, strengths, limits, and how to call it. Vendor tool descriptions can be copied from official docs and trimmed to the facts PennyParse needs. Keep secrets in environment variables, then name those variables in the toolbox prose.
 
 Generate the runtime:
 
@@ -122,6 +124,8 @@ ext = "auto"
 [reviewer]
 max_length = 1000
 ```
+
+The full default settings file is [../src/pennyparse/pennyparse.settings.default.toml](../src/pennyparse/pennyparse.settings.default.toml).
 
 ## FAQ
 

@@ -58,7 +58,7 @@ export PENNYPARSE_CHAT_MODEL=your-model
 export PENNYPARSE_CHAT_AUTHKEY=your-key
 ```
 
-`OPENAI_API_KEY` is also accepted as the auth key. The same values can live in `~/.pennyparse/pennyparse.settings.toml`, `./pennyparse.settings.toml`, or `.env`.
+`OPENAI_API_KEY` is also accepted as the auth key. The same values can live in `~/.pennyparse/pennyparse.settings.toml`, `./pennyparse.settings.toml`, or `.env`. Use [src/pennyparse/pennyparse.settings.default.toml](src/pennyparse/pennyparse.settings.default.toml) as the configuration reference.
 
 List builtin tools:
 
@@ -79,6 +79,8 @@ If you want PennyParse to call your own OCR, VLM, shell command, or API, describ
 ```text
 $HOME/pennyparse.toolbox_user.txt
 ```
+
+The toolbox description format can follow [src/pennyparse/pennyparse.toolbox_user.example.txt](src/pennyparse/pennyparse.toolbox_user.example.txt). Tool descriptions can be copied from the vendor's official docs, trimmed to name, scope, cost, flags, limits, and call shape. Put secrets such as API keys in environment variables, then name those variables in the toolbox prose.
 
 Then generate the tool runtime:
 
@@ -179,6 +181,8 @@ parser_summary_batch = 5
 max_length = 1000
 ```
 
+The complete default shape is in [src/pennyparse/pennyparse.settings.default.toml](src/pennyparse/pennyparse.settings.default.toml).
+
 ## Contributing
 
 PennyParse is pre-alpha, which makes it a good time to shape the core. Useful contributions are small and concrete:
@@ -261,7 +265,7 @@ export PENNYPARSE_CHAT_MODEL=your-model
 export PENNYPARSE_CHAT_AUTHKEY=your-key
 ```
 
-也可以使用 `OPENAI_API_KEY`。同样的配置可以写入 `~/.pennyparse/pennyparse.settings.toml`、`./pennyparse.settings.toml` 或 `.env`。
+也可以使用 `OPENAI_API_KEY`。同样的配置可以写入 `~/.pennyparse/pennyparse.settings.toml`、`./pennyparse.settings.toml` 或 `.env`。配置格式可参考 [src/pennyparse/pennyparse.settings.default.toml](src/pennyparse/pennyparse.settings.default.toml)。
 
 查看内建工具：
 
@@ -282,6 +286,8 @@ pennyparse run --out-dir pennyparse_results
 ```text
 $HOME/pennyparse.toolbox_user.txt
 ```
+
+用户工具箱的写法可参考 [src/pennyparse/pennyparse.toolbox_user.example.txt](src/pennyparse/pennyparse.toolbox_user.example.txt)。各工具说明可以从对应官方文档摘取，再保留工具名、用途范围、成本、参数、限制和调用方式。API key 等机要内容放进环境变量，在工具箱说明中写环境变量名即可。
 
 然后生成工具运行时：
 
@@ -379,6 +385,8 @@ parser_summary_batch = 5
 [reviewer]
 max_length = 1000
 ```
+
+完整默认配置见 [src/pennyparse/pennyparse.settings.default.toml](src/pennyparse/pennyparse.settings.default.toml)。
 
 ## 参与贡献
 

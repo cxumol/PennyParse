@@ -31,13 +31,15 @@ export PENNYPARSE_CHAT_MODEL=your-model
 export PENNYPARSE_CHAT_AUTHKEY=your-key
 ```
 
-也可以使用 `OPENAI_API_KEY`，或把同样的配置写入 `~/.pennyparse/pennyparse.settings.toml`、`./pennyparse.settings.toml`。
+也可以使用 `OPENAI_API_KEY`，或把同样的配置写入 `~/.pennyparse/pennyparse.settings.toml`、`./pennyparse.settings.toml`。配置格式可参考 [../src/pennyparse/pennyparse.settings.default.toml](../src/pennyparse/pennyparse.settings.default.toml)。
 
 `full` 会带上常用本地文档后端。若只想装最小依赖，也可以另行选择；多数用户从 `pennyparse[full]` 开始最省心。
 
 ## 准备用户工具
 
-把外部工具写在 `${HOME}/pennyparse.toolbox_user.txt`，也可以用 `--from` 指定别的文件。内容用平实的技术说明即可：工具名、用途范围、成本、参数、凭据、调用方式和注意事项。
+把外部工具写在 `${HOME}/pennyparse.toolbox_user.txt`，也可以用 `--from` 指定别的文件。写法可参考 [../src/pennyparse/pennyparse.toolbox_user.example.txt](../src/pennyparse/pennyparse.toolbox_user.example.txt)。
+
+内容用平实的技术说明即可：工具名、用途范围、成本、参数、能力边界、调用方式和注意事项。工具说明可以从对应官方文档摘取，再删到 PennyParse 需要的事实。API key 等机要内容放进环境变量，在工具箱说明中写环境变量名即可。
 
 生成工具运行时：
 
@@ -122,6 +124,8 @@ ext = "auto"
 [reviewer]
 max_length = 1000
 ```
+
+完整默认配置见 [../src/pennyparse/pennyparse.settings.default.toml](../src/pennyparse/pennyparse.settings.default.toml)。
 
 ## 常见问题
 

@@ -58,7 +58,9 @@ Optional dependencies affect availability, not discovery. A missing PDF or Pando
 
 ## Generated User Tools
 
-User tools start as prose in `pennyparse.toolbox_user.txt`. The prose should state concrete facts: tool names, scopes, costs, strengths, limits, required environment variables, flags, command shapes, API calls, and caveats.
+User tools start as prose in `pennyparse.toolbox_user.txt`. Use [../src/pennyparse/pennyparse.toolbox_user.example.txt](../src/pennyparse/pennyparse.toolbox_user.example.txt) as the reference shape. The prose should state concrete facts: tool names, scopes, costs, strengths, limits, required environment variables, flags, command shapes, API calls, and caveats.
+
+Vendor tool descriptions can be copied from official docs and trimmed. Keep API keys and other secrets in environment variables; the toolbox prose should name those variables, not contain the secret values.
 
 `pennyparse init tools` asks the tool-generation agent to write `${HOME}/.pennyparse/user_toolbox.py`. The generated module must expose:
 
