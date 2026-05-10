@@ -268,14 +268,14 @@ for _ in range(int(aigc.agent.max_iter)):
 ## README.md
 
 - 国际化/在地化: 单文件双语版本, 英文在上, 简体中文在下, 水平线分割, 总标题下方链接跳转语言版本 (en, zh-hans) 
-- 遣词造句体现良好语感: 
+- 遣词造句体现良好语感, 注重亲和力, 吸引力: 
   + Steven Pinker classic style 如事实般呈现观点, 平实素朴
   + 面向大学生知识水平的大众读者, 拉近读者距离, 引起情绪共鸣
   + 避免出现 GPT 特征的行文风格: em-dash; triplicates; not X but Y; in today's world; Dramatic Fragment; where [scary change], [virtue] becomes [advantage]; Here's the truth; If you're not doing [X], you're ...; if you want; 万能比喻, 模板化衔接词, 重磅形容词; etc.
   + 避免出现特定语料中的黑话､ 怪话､ 口癖: 落盘, 接住, 狠狠, 说穿, 开悟, 兜底, 口径, 契约, 硬撑, 硬写, 不稳, 砍一刀, 补一刀, 说人话就是, 等等
   + 谨慎使用 加粗号､ Emoji 等媚俗装饰
 - 排版: 灵活运用 GFM 可供的格式, 使文档清晰易读
-- 目的: 使陌生读者对项目价值､ 优势一目了然, 且能快速上手; 让多数浏览者更容易在 GitHub 上进来扫两眼后点星星
+- 目的: 使陌生读者对项目价值､ 优势一目了然, 且能快速上手; 让多数浏览者更容易在 GitHub 上进来扫两眼后点上星标
 
 ---
 

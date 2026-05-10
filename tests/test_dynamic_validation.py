@@ -402,6 +402,105 @@ TOOL_HANDLERS = {"demo_ocr": tool_demo_ocr}
             self.assertIn("parser result did not expose the extracted text directly", seen_messages[1])
             self.assertIn('return "extracted text"', target.read_text(encoding="utf-8"))
 
+    def test_init_tools_default_result_validation_uses_packaged_assets_in_temp_cwd(self) -> None:
+        module_code = """
+from pathlib import Path
+import argparse
+import os
+import tempfile
+
+TOOL_SPECS = [
+    {
+        "name": "demo_parser",
+        "scope": "parser",
+        "cost": "very low",
+        "desc": "Demo image parser.",
+        "flags": {"path": "/path/to/image.png", "out-dir": "/path/to/output"},
+    }
+]
+UNAVAILABLE_TOOLS = {}
+
+def tool_demo_parser(argv):
+    parser = argparse.ArgumentParser(add_help=False)
+    parser.add_argument("--path", required=True)
+    parser.add_argument("--out-dir", required=True)
+    args = parser.parse_args(argv)
+    cwd = Path.cwd()
+    tmp = Path(tempfile.gettempdir())
+    out_dir = Path(args.out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (cwd / "cwd_marker.txt").write_text("ok", encoding="utf-8")
+    (tmp / "tmp_marker.txt").write_text("ok", encoding="utf-8")
+    return {
+        "cwd": str(cwd),
+        "tmp": str(tmp),
+        "asset": Path(args.path).name,
+        "out_dir": str(out_dir),
+        "exists": Path(args.path).exists(),
+    }
+
+TOOL_HANDLERS = {"demo_parser": tool_demo_parser}
+"""
+
+        class FakeChatClient:
+            def __init__(self, **kwargs):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                pass
+
+            def complete(self, session, **kwargs):
+                message = {"role": "assistant", "content": f"```python\n{module_code}\n```"}
+                session.messages.append(message)
+                return message
+
+        temp_roots: list[Path] = []
+        original_tempdir = init_tools_agent.tempfile.TemporaryDirectory
+
+        class TrackingTemporaryDirectory:
+            def __init__(self, *args, **kwargs):
+                self.inner = original_tempdir(*args, **kwargs)
+
+            def __enter__(self):
+                path = Path(self.inner.__enter__())
+                temp_roots.append(path)
+                return str(path)
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                return self.inner.__exit__(exc_type, exc_value, traceback)
+
+        with tempfile.TemporaryDirectory() as cwd_raw, tempfile.TemporaryDirectory() as home_raw:
+            cwd = Path(cwd_raw)
+            home = Path(home_raw)
+            source = cwd / "pennyparse.toolbox_user.txt"
+            target = home / ".pennyparse" / "user_toolbox.py"
+            target.parent.mkdir(parents=True)
+            source.write_text("Tool: demo_parser\n", encoding="utf-8")
+
+            with (
+                mock.patch.dict(os.environ, {"PENNYPARSE_CHAT_MODEL": "unit-test-model"}),
+                mock.patch("pennyparse.agent.init_tools.ChatClient", FakeChatClient),
+                mock.patch("pennyparse.agent.init_tools.tempfile.TemporaryDirectory", TrackingTemporaryDirectory),
+            ):
+                summary = init_tools_agent.run_init_tools_agent(
+                    cwd=cwd,
+                    source_path=source,
+                    target_path=target,
+                )
+
+            self.assertTrue(summary["ok"], summary)
+            validation = [item for item in summary["validation"] if item["tool"] == "demo_parser"]
+            self.assertEqual(len(validation), 2)
+            result_details = [item["details"] for item in validation if "asset" in item.get("details", {})][0]
+            self.assertIn(result_details["asset"], {asset.name for asset in init_tools_agent._package_demo_assets()})
+            self.assertTrue(temp_roots)
+            for root in temp_roots:
+                self.assertFalse(root.exists())
+            self.assertFalse((cwd / "cwd_marker.txt").exists())
+
     def test_init_tools_agent_writes_unavailable_fallback_on_chat_network_error(self) -> None:
         class FailingChatClient:
             def __init__(self, **kwargs):

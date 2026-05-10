@@ -37,4 +37,4 @@ jobs:
         run: uv build
 
       - name: Publish distributions
-        run: uv publish
+        run: uv publish -t ${{ secrets.PYPI_TOKEN }}

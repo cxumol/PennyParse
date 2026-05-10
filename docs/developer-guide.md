@@ -51,6 +51,8 @@ PENNYPARSE_CHAT_AUTHKEY=your-key
 
 Runtime code reads `${HOME}/.pennyparse/user_toolbox.py` and `./.pennyparse_memory.txt`. Tests should isolate both `HOME` and `cwd` with temporary directories. Do not depend on repository demo assets by name; discover suitable files by type, or skip optional assertions when their backend is absent.
 
+`init tools` validates generated handlers with demo assets packaged under `pennyparse/demo_assets/`. The validation copies those files into a temporary working directory, runs handlers from that directory, points `TMPDIR`, `TEMP`, and `TMP` there, and removes the directory on normal exit.
+
 ## Verification
 
 Run unit tests:

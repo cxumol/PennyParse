@@ -3,8 +3,12 @@ from __future__ import annotations
 import json
 import os
 import re
+import tempfile
 from collections.abc import Callable, Iterable
+from contextlib import contextmanager
 from dataclasses import dataclass, field
+from importlib import resources
+from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -24,6 +28,7 @@ from ..cmd.tool import (
     SAMPLE_DYNAMIC_IMPORT,
     SAMPLE_GENERATED_USER_TOOLBOX,
     ToolSpec,
+    coerce_tool_result,
     load_user_specs,
     load_user_toolbox_module,
     prompt_builtin_contract_json,
@@ -110,7 +115,7 @@ def run_init_tools_agent(
 
             validation = _validate_user_tools(
                 target_path=target_path,
-                result_validator=result_validator,
+                result_validator=result_validator or _validate_results_with_demo_assets,
                 logger=logger,
             )
             summary = _build_summary(
@@ -432,6 +437,161 @@ def _validate_user_tools(
         "enabled": enabled,
         "unavailable": unavailable,
     }
+
+
+def _validate_results_with_demo_assets(target_path: Path, specs: list[ToolSpec]) -> Iterable[ValidationRecord]:
+    module, module_error = load_user_toolbox_module(module_path=target_path)
+    if module_error:
+        return [
+            ValidationRecord(
+                tool="__module__",
+                ok=False,
+                exception=module_error,
+            )
+        ]
+
+    assert module is not None
+    handlers = getattr(module, "TOOL_HANDLERS", {})
+    if not isinstance(handlers, Mapping):
+        return []
+
+    assets = _package_demo_assets()
+    if not assets:
+        return [
+            ValidationRecord(
+                tool="__demo_assets__",
+                ok=True,
+                unavailable_reason="package demo assets are not available; skipped result validation",
+            )
+        ]
+
+    records: list[ValidationRecord] = []
+    with tempfile.TemporaryDirectory(prefix="pennyparse-init-tools-") as raw_workdir:
+        workdir = Path(raw_workdir)
+        asset_dir = workdir / "demo_assets"
+        asset_dir.mkdir()
+        copied_assets = [_copy_demo_asset(asset, asset_dir) for asset in assets]
+
+        for spec in specs:
+            handler = handlers.get(spec.name)
+            if not callable(handler):
+                continue
+
+            path = _demo_asset_for_spec(spec, copied_assets)
+            if path is None:
+                records.append(
+                    ValidationRecord(
+                        tool=spec.name,
+                        ok=True,
+                        unavailable_reason="no matching packaged demo asset; skipped result validation",
+                    )
+                )
+                continue
+
+            argv = _demo_argv(spec, path=path, workdir=workdir)
+            try:
+                with _validation_runtime_scope(workdir):
+                    raw_result = handler(argv)
+                coerced = coerce_tool_result(raw_result, tool_name=spec.name)
+            except Exception as exc:
+                records.append(
+                    ValidationRecord(
+                        tool=spec.name,
+                        ok=False,
+                        exception=f"demo asset validation failed: {exc!r}",
+                        details={"argv": argv, "workdir": str(workdir)},
+                    )
+                )
+                continue
+
+            records.append(
+                ValidationRecord(
+                    tool=spec.name,
+                    ok=True,
+                    details={
+                        "asset": path.name,
+                        "result_kind": coerced.kind,
+                        "result_size": _result_size(coerced.value),
+                    },
+                )
+            )
+
+    return records
+
+
+def _package_demo_assets() -> list[Traversable]:
+    try:
+        root = resources.files("pennyparse").joinpath("demo_assets")
+        if not root.is_dir():
+            return []
+        return sorted((item for item in root.iterdir() if item.is_file()), key=lambda item: item.name)
+    except (FileNotFoundError, ModuleNotFoundError, TypeError):
+        return []
+
+
+def _copy_demo_asset(source: Traversable, target_dir: Path) -> Path:
+    target = target_dir / source.name
+    target.write_bytes(source.read_bytes())
+    return target
+
+
+def _demo_asset_for_spec(spec: ToolSpec, assets: list[Path]) -> Path | None:
+    flag_text = " ".join([spec.name, spec.desc, *spec.flags.keys(), *spec.flags.values()]).lower()
+    if "pdf" in flag_text:
+        return _first_asset_with_suffix(assets, {".pdf"})
+    if any(token in flag_text for token in ("image", "img", "ocr", "vision", "jpg", "jpeg", "png")):
+        return _first_asset_with_suffix(assets, {".png", ".jpg", ".jpeg", ".webp", ".tif", ".tiff"})
+    return _first_asset_with_suffix(assets, {".png", ".jpg", ".jpeg", ".pdf"})
+
+
+def _first_asset_with_suffix(assets: list[Path], suffixes: set[str]) -> Path | None:
+    for asset in assets:
+        if asset.suffix.lower() in suffixes:
+            return asset
+    return None
+
+
+def _demo_argv(spec: ToolSpec, *, path: Path, workdir: Path) -> list[str]:
+    argv: list[str] = []
+    for flag, example in spec.flags.items():
+        option = f"--{flag}"
+        value = str(example)
+        lowered = " ".join([flag, value]).lower()
+        if "out-dir" in flag or "output" in flag:
+            argv.extend([option, str(workdir / "outputs" / spec.name)])
+        elif flag == "path" or lowered.endswith(" path") or "/path/to/" in lowered:
+            argv.extend([option, str(path)])
+        elif value.startswith("/path/to/"):
+            argv.extend([option, str(path)])
+        elif value and not value.startswith("--"):
+            argv.extend([option, value])
+    if "--path" not in argv and "path" in spec.flags:
+        argv.extend(["--path", str(path)])
+    return argv
+
+
+def _result_size(value: Any) -> int:
+    if isinstance(value, (bytes, bytearray, memoryview, str)):
+        return len(value)
+    return len(json.dumps(value, ensure_ascii=False, default=str))
+
+
+@contextmanager
+def _validation_runtime_scope(path: Path):
+    old_cwd = Path.cwd()
+    old_env = {name: os.environ.get(name) for name in ("TMPDIR", "TEMP", "TMP")}
+    os.chdir(path)
+    for name in old_env:
+        os.environ[name] = str(path)
+    try:
+        yield
+    finally:
+        os.chdir(old_cwd)
+        for name, value in old_env.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
 
 
 def _build_repair_feedback(validation: Mapping[str, Any]) -> str:
