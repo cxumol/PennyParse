@@ -2,6 +2,12 @@
 
 # PennyParse 厘晰
 
+[![Publish to PyPI](https://github.com/cxumol/PennyParse/actions/workflows/publish-pypi.yml/badge.svg)](https://github.com/cxumol/PennyParse/actions/workflows/publish-pypi.yml)
+[![PyPI version](https://badge.fury.io/py/pennyparse.svg)](https://badge.fury.io/py/pennyparse)
+[![PyPI Downloads](https://img.shields.io/pepy/dt/pennyparse)](https://pepy.tech/projects/pennyparse)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Versions](https://img.shields.io/pypi/pyversions/pennyparse.svg)](https://pypi.org/project/pennyparse/)
+
 ![Brand banner](https://github.com/user-attachments/assets/c3247c7f-52db-4a7b-b46f-b543f2d88e5b)
 
 > 丝帛简牍数码书，千金半厘辨分殊。  
