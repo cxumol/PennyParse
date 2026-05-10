@@ -225,7 +225,7 @@ The complete default shape is in [src/pennyparse/pennyparse.settings.default.tom
 
 ## Contributing
 
-PennyParse is pre-alpha, which makes it a good time to shape the core. Useful contributions are small and concrete:
+PennyParse is beta, which makes it a good time to shape the core. Useful contributions are small and concrete:
 
 - Add or improve builtin parser tools.
 - Add demo assets that represent real document pain.
@@ -260,7 +260,7 @@ Useful code paths:
 
 ## Status
 
-PennyParse is pre-alpha. The command shape is usable, and breaking changes are still possible. The project is looking for contributors who care about document extraction, local-first tooling, and agent workflows with clear boundaries.
+PennyParse is beta. The command shape is usable, and breaking changes are still possible. The project is looking for contributors who care about document extraction, local-first tooling, and agent workflows with clear boundaries.
 
 ---
 
@@ -470,7 +470,7 @@ max_length = 1000
 
 ## 参与贡献
 
-PennyParse 处于 pre-alpha 阶段，现在很适合参与塑造核心。适合下手的贡献包括：
+PennyParse 处于 beta 阶段，现在很适合参与塑造。适合下手的贡献包括：
 
 - 增加或改进内建解析工具。
 - 增加能代表真实文档难题的 demo assets。
@@ -505,4 +505,4 @@ uv run --extra pdf python -m unittest discover -s tests
 
 ## 项目状态
 
-PennyParse 处于 pre-alpha 阶段。命令形态已经可用，后续仍可能有破坏性变更。若你也关心文档解析、本地优先工具、边界清楚的 Agent 工作流，此时加入，正好能改到根上。
+PennyParse 处于 beta 阶段。命令形态已经可用，后续仍可能有破坏性变更。若你也关心文档解析、本地优先工具、边界清楚的 Agentic 工作流，此时加入，正好赶上。

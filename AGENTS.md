@@ -288,4 +288,4 @@ for _ in range(int(aigc.agent.max_iter)):
 
 # 对于当前代码库
 
-- 当前全项目处于 pre-alpha 阶段, 没有实际用户, 如需重构, 则不考虑兼容, 允许 breaking change
+- 当前全项目处于 beta 阶段, 没有实际用户, 如需重构, 则不考虑兼容, 允许 breaking change
