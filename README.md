@@ -17,9 +17,9 @@
 
 Document parsing should be tiered, routed, and reviewed. Use cheap local extraction when it is enough. Escalate only when the AI agent finds the page needs it.
 
-- Tesseract OCR 搞不定艺术字形和生僻字符; 顶级多模态 LLM 解析出版小说轻轻松松却浪费算力时间, 所以, 你需要分级 Tesseract OCR can't handle artistic fonts and rare characters; top-tier multimodal LLMs can easily parse published novels but waste computing power and time, so you need a tiered approach. 
-- 同样是多模态大模型, 模型甲更擅长手写识别, 模型乙更胜任公式识别, 所以, 你需要 Agent 帮你分配调度 Even among multimodal large models, Model A is better at handwriting recognition, while Model B excels at formula recognition, so you need an Agent to handle allocation and scheduling.
-- Agentic Loop 用于文档识别, 好处在于有校对, 即使校对选用了不带视觉功能的 LLM, 也可以从 读着是否通顺､ 排版是否错位､ 表格是否漂移 等方面校对 The benefit of an Agentic Loop for document recognition is proofreading; even if the proofreading uses an LLM without vision capabilities, it can still check from angles like whether the text reads smoothly or whether the layout is misaligned.
+- Tesseract OCR 搞不定艺术字形和生僻字符; 顶级多模态 LLM 解析出版小说轻轻松松却浪费算力时间, 所以, 你需要分级。 Tesseract OCR can't handle artistic fonts and rare characters; top-tier multimodal LLMs can easily parse published novels but waste computing power and time, so you need a tiered approach. 
+- 同样是多模态大模型, 模型甲更擅长手写识别, 模型乙更胜任公式识别, 所以, 你需要 Agent 帮你分配调度。 Even among multimodal large models, Model A is better at handwriting recognition, while Model B excels at formula recognition, so you need an Agent to handle allocation and scheduling.
+- Agentic Loop 用于文档识别, 好处在于有校对, 即使校对选用了不带视觉功能的 LLM, 也可以从 读着是否通顺､ 排版是否错位､ 表格是否漂移 等方面校对。 The benefit of an Agentic Loop for document recognition is proofreading; even if the proofreading uses an LLM without vision capabilities, it can still check from angles like whether the text reads smoothly or whether the layout is misaligned.
 
 ---
 
@@ -276,7 +276,7 @@ PennyParse is beta. The command shape is usable, and breaking changes are still 
 
 ## 为什么是 PennyParse
 
-PennyParse 并非 "Yet Another 图文识别"，而是分级解析的统筹型 Agentic Workflow。把一窝鸡飞狗跳的文档，慢慢理成干净的纯文本。
+PennyParse 并非 "Yet Another 图文识别工具"，而是元工具, 用来统筹调度多种图文识别工具的 Agentic Workflow。 把一窝鸡飞狗跳的文档，慢慢理成干净的纯文本。
 
 容易的页，先请便宜的工具去读；读不动了，再请更贵的OCR、VLM或云端API。算力如灯油，明处不必添灯，暗处才该多照一照。
 
@@ -443,7 +443,7 @@ AI Agents 智能体  （init_tools / parser / reviewer）
 | 工具层 | 解析能力 | PDF 文本、图像缩略图、Pandoc、用户 OCR、VLM API |
 | Agent 层 | 不确定场景下的判断 | 文件分组、工具选择、抽取结果审阅 |
 
-解析 Agent 先问工具注册表："咱们工具箱里都有啥?" 再选取工具执行。解析得到的候选文本，须经审阅才写入输出目录。审阅不过的，Agent 自会另择工具，直到解析齐备。
+解析 Agent 先问工具注册表："咱们工具箱里都有啥?" 再选取工具执行。解析得到的候选文本，须经审阅才写入输出目录。审阅不过的，Agent 自会另择工具。
 
 ## 配置
 
