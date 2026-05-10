@@ -2,7 +2,9 @@
 
 [English](#english) | [简体中文](#简体中文)
 
-![Brand banner placeholder](docs/assets/readme-brand-banner.png)
+![Brand banner](docs/assets/readme-brand-banner.png)
+
+> 
 
 PennyParse turns a folder of mixed, messy documents into clean UTF-8 text. It is built for the files that break ordinary extraction: scanned PDFs, photos of paper, handwritten pages, low-quality copies, tables, charts, and folders where easy and hard documents sit side by side.
 
@@ -26,7 +28,7 @@ PennyParse treats parsing as an adaptive workflow:
 - It reviews extracted text before writing final output.
 - It lets you plug in local tools, OCR services, VLMs, or cloud APIs through a small tool contract.
 
-![Core value comparison placeholder](docs/assets/readme-core-value-comparison.png)
+![Core value comparison](docs/assets/readme-core-value-comparison.png)
 
 ## First Run
 
@@ -139,7 +141,7 @@ AI Agents  （init_tools / parser / reviewer）
 Tool chain  （builtin tools + user_toolbox.py）
 ```
 
-![Detailed architecture diagram placeholder](docs/assets/readme-detailed-architecture.png)
+![Detailed architecture diagram](docs/assets/readme-detailed-architecture.png)
 
 PennyParse has three working planes:
 
@@ -237,7 +239,7 @@ PennyParse 把解析变成一个自适应流程：
 - 在写入最终结果前审阅抽取文本。
 - 通过小而清晰的工具契约接入本地工具、OCR 服务、VLM 或云端 API。
 
-![核心价值对比图占位](docs/assets/readme-core-value-comparison.png)
+![核心价值对比图](docs/assets/readme-core-value-comparison.png)
 
 ## 快速开始
 
