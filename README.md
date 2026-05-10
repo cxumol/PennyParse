@@ -4,8 +4,6 @@
 
 ![Brand banner](docs/assets/readme-brand-banner.png)
 
-> 
-
 PennyParse turns a folder of mixed, messy documents into clean UTF-8 text. It is built for the files that break ordinary extraction: scanned PDFs, photos of paper, handwritten pages, low-quality copies, tables, charts, and folders where easy and hard documents sit side by side.
 
 The idea is simple: spend the cheapest useful effort first, then escalate only when the document earns it.
