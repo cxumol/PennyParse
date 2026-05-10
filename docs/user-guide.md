@@ -52,7 +52,7 @@ Review `${HOME}/.pennyparse/user_toolbox.py` before running generated tools with
 
 ## Initialize A Document Folder
 
-Run this inside the folder that contains the documents:
+`pennyparse init docs` requires `${HOME}/.pennyparse/user_toolbox.py`, so prepare user tools first. Then run this inside the folder that contains the documents:
 
 ```shell
 cd /path/to/documents
@@ -66,6 +66,8 @@ The full initialization command runs both steps:
 ```shell
 pennyparse init --from /path/to/pennyparse.toolbox_user.txt --force
 ```
+
+Its JSON output uses `result_file` for generated paths. `init docs` returns `groups` as a list of group records, plus `file_count` and `unmatched_count`.
 
 ## Parse Documents
 
@@ -81,6 +83,8 @@ Parse selected files or directories:
 pennyparse run invoice.pdf scans/ --out-dir pennyparse_results
 ```
 
+`pennyparse run` requires both `${HOME}/.pennyparse/user_toolbox.py` and `./.pennyparse_memory.txt`. Its JSON summary reports `parsed_count`, `failed_count`, `skipped_count`, detailed `results`, `failures`, `skipped`, and `output_stats`.
+
 Each successful source writes one UTF-8 text file under the output directory. The source-relative path is preserved:
 
 ```text
@@ -93,10 +97,12 @@ During a run, PennyParse appends short batch notes and a final output summary to
 
 ```shell
 pennyparse tool --list
-pennyparse tool --list --scope=previewer
+pennyparse tool --list --scope=parser
 pennyparse tool pdf2txt --help
 pennyparse tool pdf2txt --path report.pdf
 ```
+
+Parser tool list output includes each available tool and its flags, for example `pdf2txt`, `pdf_pages_to_images`, and `pandoc2txt` when their optional backends are installed.
 
 Unavailable tools are skipped from normal list output and logged with their reason. Common causes are missing optional Python packages or missing secret environment variables.
 

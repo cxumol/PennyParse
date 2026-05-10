@@ -52,7 +52,7 @@ pennyparse init tools --from ./pennyparse.toolbox_user.txt --force
 
 ## 初始化文档目录
 
-进入文档所在目录：
+`pennyparse init docs` 需要 `${HOME}/.pennyparse/user_toolbox.py` 已存在，所以先准备用户工具，再进入文档所在目录：
 
 ```shell
 cd /path/to/documents
@@ -66,6 +66,8 @@ pennyparse init docs
 ```shell
 pennyparse init --from /path/to/pennyparse.toolbox_user.txt --force
 ```
+
+JSON 输出中，生成文件路径使用 `result_file` 字段。`init docs` 的 `groups` 是分组记录列表，另有 `file_count` 和 `unmatched_count`。
 
 ## 解析文档
 
@@ -81,6 +83,8 @@ pennyparse run
 pennyparse run invoice.pdf scans/ --out-dir pennyparse_results
 ```
 
+`pennyparse run` 需要 `${HOME}/.pennyparse/user_toolbox.py` 和 `./.pennyparse_memory.txt` 都已存在。返回摘要使用 `parsed_count`、`failed_count`、`skipped_count`，并包含详细的 `results`、`failures`、`skipped` 和 `output_stats`。
+
 每个成功解析的源文件会在输出目录下生成一个 UTF-8 文本文件，并保留相对路径：
 
 ```text
@@ -93,10 +97,12 @@ docs/report.pdf -> pennyparse_results/docs/report.pdf.txt
 
 ```shell
 pennyparse tool --list
-pennyparse tool --list --scope=previewer
+pennyparse tool --list --scope=parser
 pennyparse tool pdf2txt --help
 pennyparse tool pdf2txt --path report.pdf
 ```
+
+解析工具列表会显示每个可用工具及其参数；可选后端齐备时，常见项包括 `pdf2txt`、`pdf_pages_to_images` 和 `pandoc2txt`。
 
 不可用工具不会出现在普通列表中，原因会写入日志。常见原因是缺少可选依赖，或少了工具声明的环境变量。
 

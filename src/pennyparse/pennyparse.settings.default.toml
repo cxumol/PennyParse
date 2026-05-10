@@ -11,7 +11,7 @@ model = ""
 model_hasVision = true
 
 [init.ignore]
-ext = ["txt", "md", "html"]
+ext = ["txt", "md", "html", "log", "py"]
 folder = [".git", "__pycache__", "pennyparse_output", "pennyparse_results"]
 
 [init.sampling]

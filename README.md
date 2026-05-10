@@ -66,14 +66,6 @@ List builtin tools:
 pennyparse tool --list
 ```
 
-Parse a folder:
-
-```shell
-cd /path/to/documents
-pennyparse init docs
-pennyparse run --out-dir pennyparse_results
-```
-
 If you want PennyParse to call your own OCR, VLM, shell command, or API, describe it in plain text first:
 
 ```text
@@ -90,30 +82,78 @@ pennyparse init tools
 
 PennyParse writes executable Python to `$HOME/.pennyparse/user_toolbox.py`. Review that file before using it with real credentials.
 
+Then parse a folder:
+
+```shell
+cd /path/to/documents
+pennyparse init docs
+pennyparse run --out-dir pennyparse_results
+```
+
 ## CLI Example
 
 ```text
 $ pennyparse tool --list --scope=parser
-pdf2txt          scope: parser cost: very low   Extract embedded PDF text
-pdf_page_image   scope: parser cost: low        Render PDF pages as images
-pandoc_docx      scope: parser cost: low        Convert office documents through Pandoc
+pdf2txt	scope: parser cost: low	Extract PDF text with PyMuPDF.
+	--path /path/to/file.pdf
+
+pdf_pages_to_images	scope: parser cost: medium	Render each PDF page to a PNG image with PyMuPDF.
+	--path /path/to/file.pdf
+	--out-dir /path/to/page-images
+
+pandoc2txt	scope: parser cost: low	Convert office documents to plain text with Pandoc.
+	--path /path/to/file
 
 $ cd ~/cases/mixed_docs
+$ pennyparse init tools --from ./pennyparse.toolbox_user.txt
+{
+  "ok": true,
+  "usertools_valid": [
+    "siliconflow_deepseekocr"
+  ],
+  "usertools_failed": [],
+  "agent_turns": 1,
+  "result_file": "/home/me/.pennyparse/user_toolbox.py"
+}
+
 $ pennyparse init docs
 {
   "ok": true,
-  "groups": 4,
-  "memory_file": "/home/me/cases/mixed_docs/.pennyparse_memory.txt"
+  "result_file": "/home/me/cases/mixed_docs/.pennyparse_memory.txt",
+  "groups": [
+    {
+      "name": "pdf_text",
+      "...": "..."
+    }
+  ],
+  "file_count": 18,
+  "unmatched_count": 0
 }
 
 $ pennyparse run invoice.pdf scans/ --out-dir pennyparse_results
 {
   "ok": true,
-  "parsed": 18,
-  "failed": 1,
-  "out_dir": "pennyparse_results"
+  "out_dir": "/home/me/cases/mixed_docs/pennyparse_results",
+  "parsed_count": 18,
+  "failed_count": 0,
+  "skipped_count": 0,
+  "results": [
+    {
+      "source": "invoice.pdf",
+      "output_file": "/home/me/cases/mixed_docs/pennyparse_results/invoice.pdf.txt",
+      "...": "..."
+    }
+  ],
+  "failures": [],
+  "skipped": [],
+  "output_stats": {
+    "file_count": 18,
+    "...": "..."
+  }
 }
 ```
+
+The JSON examples above keep the real field names and shorten long arrays with `"..."`.
 
 ## What You Get
 
@@ -273,14 +313,6 @@ export PENNYPARSE_CHAT_AUTHKEY=your-key
 pennyparse tool --list
 ```
 
-解析一个目录：
-
-```shell
-cd /path/to/documents
-pennyparse init docs
-pennyparse run --out-dir pennyparse_results
-```
-
 如果要让 PennyParse 调用你自己的 OCR、VLM、命令行工具或 API，先用普通文本描述它：
 
 ```text
@@ -297,30 +329,78 @@ pennyparse init tools
 
 PennyParse 会启用 AI Agent 把 pennyparse.toolbox_user.txt 转换成的可执行脚本写入 `$HOME/.pennyparse/user_toolbox.py`。真实使用前，请先审阅这份文件。
 
+然后解析一个目录：
+
+```shell
+cd /path/to/documents
+pennyparse init docs
+pennyparse run --out-dir pennyparse_results
+```
+
 ## CLI 运行示例
 
 ```text
 $ pennyparse tool --list --scope=parser
-pdf2txt          scope: parser cost: very low   Extract embedded PDF text
-pdf_page_image   scope: parser cost: low        Render PDF pages as images
-pandoc_docx      scope: parser cost: low        Convert office documents through Pandoc
+pdf2txt	scope: parser cost: low	Extract PDF text with PyMuPDF.
+	--path /path/to/file.pdf
+
+pdf_pages_to_images	scope: parser cost: medium	Render each PDF page to a PNG image with PyMuPDF.
+	--path /path/to/file.pdf
+	--out-dir /path/to/page-images
+
+pandoc2txt	scope: parser cost: low	Convert office documents to plain text with Pandoc.
+	--path /path/to/file
 
 $ cd ~/cases/mixed_docs
+$ pennyparse init tools --from ./pennyparse.toolbox_user.txt
+{
+  "ok": true,
+  "usertools_valid": [
+    "siliconflow_deepseekocr"
+  ],
+  "usertools_failed": [],
+  "agent_turns": 1,
+  "result_file": "/home/me/.pennyparse/user_toolbox.py"
+}
+
 $ pennyparse init docs
 {
   "ok": true,
-  "groups": 4,
-  "memory_file": "/home/me/cases/mixed_docs/.pennyparse_memory.txt"
+  "result_file": "/home/me/cases/mixed_docs/.pennyparse_memory.txt",
+  "groups": [
+    {
+      "name": "pdf_text",
+      "...": "..."
+    }
+  ],
+  "file_count": 18,
+  "unmatched_count": 0
 }
 
 $ pennyparse run invoice.pdf scans/ --out-dir pennyparse_results
 {
   "ok": true,
-  "parsed": 18,
-  "failed": 1,
-  "out_dir": "pennyparse_results"
+  "out_dir": "/home/me/cases/mixed_docs/pennyparse_results",
+  "parsed_count": 18,
+  "failed_count": 0,
+  "skipped_count": 0,
+  "results": [
+    {
+      "source": "invoice.pdf",
+      "output_file": "/home/me/cases/mixed_docs/pennyparse_results/invoice.pdf.txt",
+      "...": "..."
+    }
+  ],
+  "failures": [],
+  "skipped": [],
+  "output_stats": {
+    "file_count": 18,
+    "...": "..."
+  }
 }
 ```
+
+上面的 JSON 保留真实字段名，较长的数组用 `"..."` 缩短展示。
 
 ## 产出结果
 

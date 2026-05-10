@@ -11,7 +11,7 @@ pennyparse tool <toolname> --help
 pennyparse tool <toolname> [args...]
 ```
 
-The stream rule is simple: tool results go to `stdout`; logs and errors go to `stderr`. Text tools print text, JSON tools print JSON, and binary tools write bytes.
+The stream rule is simple: tool results go to `stdout`; logs and errors go to `stderr`. Text tools print text, JSON tools print JSON, and binary tools write bytes. List output contains only available tools and includes each tool's flags.
 
 ## Tool Spec
 
@@ -55,6 +55,8 @@ The builtin set covers low-cost inspection and common document parsing:
 - `pandoc2txt`: Office document conversion.
 
 Optional dependencies affect availability, not discovery. A missing PDF or Pandoc backend makes the affected tool unavailable with a reason; it does not remove the tool from the model the parser can reason about.
+
+When the PDF and Pandoc backends are installed, `pennyparse tool --list --scope=parser` includes `pdf2txt`, `pdf_pages_to_images`, and `pandoc2txt`.
 
 ## Generated User Tools
 
