@@ -18,7 +18,7 @@ uv run pennyparse --help
 ```shell
 python -m venv .venv
 . .venv/bin/activate
-python -m pip install -e ".[pdf,docx]"
+python -m pip install -e ".[full]"
 pennyparse --help
 ```
 

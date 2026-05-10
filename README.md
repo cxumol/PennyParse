@@ -36,10 +36,10 @@ The review step matters. A text-only LLM cannot see the page, but it can still c
 
 ## First Run
 
-Install PennyParse from PyPI:
+Install PennyParse from PyPI with the common document backends:
 
 ```shell
-python -m pip install pennyparse
+python -m pip install "pennyparse[full]"
 pennyparse --help
 ```
 
@@ -47,7 +47,7 @@ pennyparse --help
 <summary>Prefer uv?</summary>
 
 ```shell
-uv tool install pennyparse
+uv tool install "pennyparse[full]"
 pennyparse --help
 ```
 
@@ -67,8 +67,6 @@ List builtin tools:
 
 ```shell
 pennyparse tool --list
-python -m pip install "pennyparse[pdf]"
-python -m pip install "pennyparse[docx]"
 ```
 
 Parse a folder:
@@ -253,10 +251,10 @@ Agentic Loop 的好处，正在这一次回看。纯文本 LLM 看不见原页�
 
 ## 快速开始
 
-从 PyPI 安装 PennyParse：
+从 PyPI 安装 PennyParse，并带上常用文档后端：
 
 ```shell
-python -m pip install pennyparse
+python -m pip install "pennyparse[full]"
 pennyparse --help
 ```
 
@@ -264,7 +262,7 @@ pennyparse --help
 <summary>偏好 uv？</summary>
 
 ```shell
-uv tool install pennyparse
+uv tool install "pennyparse[full]"
 pennyparse --help
 ```
 
@@ -284,8 +282,6 @@ export PENNYPARSE_CHAT_AUTHKEY=your-key
 
 ```shell
 pennyparse tool --list
-python -m pip install "pennyparse[pdf]"
-python -m pip install "pennyparse[docx]"
 ```
 
 解析一个目录：

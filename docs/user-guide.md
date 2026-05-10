@@ -6,10 +6,10 @@ The workflow is graded. Embedded PDF text, clean scans, decorative type, handwri
 
 ## Install And Configure
 
-Install PennyParse from PyPI:
+Install PennyParse from PyPI with the common document backends:
 
 ```shell
-python -m pip install pennyparse
+python -m pip install "pennyparse[full]"
 pennyparse --help
 ```
 
@@ -17,7 +17,7 @@ pennyparse --help
 <summary>Prefer uv?</summary>
 
 ```shell
-uv tool install pennyparse
+uv tool install "pennyparse[full]"
 pennyparse --help
 ```
 
@@ -33,12 +33,7 @@ export PENNYPARSE_CHAT_AUTHKEY=your-key
 
 `OPENAI_API_KEY` is also accepted as the auth key. You can put the same values in `~/.pennyparse/pennyparse.settings.toml` or `./pennyparse.settings.toml`.
 
-Optional document backends:
-
-```shell
-python -m pip install "pennyparse[pdf]"
-python -m pip install "pennyparse[docx]"
-```
+The `full` extra includes the common local document backends. Minimal installs are possible, but most users should start with `pennyparse[full]`.
 
 ## Prepare User Tools
 

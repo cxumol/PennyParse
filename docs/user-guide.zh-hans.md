@@ -6,10 +6,10 @@ PennyParse 把一个目录里的杂文档，理成可读、可检索、可再处
 
 ## 安装与配置
 
-从 PyPI 安装 PennyParse：
+从 PyPI 安装 PennyParse，并带上常用文档后端：
 
 ```shell
-python -m pip install pennyparse
+python -m pip install "pennyparse[full]"
 pennyparse --help
 ```
 
@@ -17,7 +17,7 @@ pennyparse --help
 <summary>偏好 uv？</summary>
 
 ```shell
-uv tool install pennyparse
+uv tool install "pennyparse[full]"
 pennyparse --help
 ```
 
@@ -33,12 +33,7 @@ export PENNYPARSE_CHAT_AUTHKEY=your-key
 
 也可以使用 `OPENAI_API_KEY`，或把同样的配置写入 `~/.pennyparse/pennyparse.settings.toml`、`./pennyparse.settings.toml`。
 
-可选文档后端：
-
-```shell
-python -m pip install "pennyparse[pdf]"
-python -m pip install "pennyparse[docx]"
-```
+`full` 会带上常用本地文档后端。若只想装最小依赖，也可以另行选择；多数用户从 `pennyparse[full]` 开始最省心。
 
 ## 准备用户工具
 
