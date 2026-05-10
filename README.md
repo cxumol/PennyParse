@@ -4,9 +4,9 @@
 
 [![Publish to PyPI](https://github.com/cxumol/PennyParse/actions/workflows/publish-pypi.yml/badge.svg)](https://github.com/cxumol/PennyParse/actions/workflows/publish-pypi.yml)
 [![PyPI version](https://badge.fury.io/py/pennyparse.svg)](https://badge.fury.io/py/pennyparse)
-[![PyPI Downloads](https://img.shields.io/pepy/dt/pennyparse)](https://pepy.tech/projects/pennyparse)
+<!-- [![PyPI Downloads](https://img.shields.io/pepy/dt/pennyparse)](https://pepy.tech/projects/pennyparse) -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python Versions](https://img.shields.io/pypi/pyversions/pennyparse.svg)](https://pypi.org/project/pennyparse/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/pennyparse)](https://pypi.org/project/pennyparse/)
 
 ![Brand banner](https://github.com/user-attachments/assets/c3247c7f-52db-4a7b-b46f-b543f2d88e5b)
 
@@ -20,6 +20,7 @@ Document parsing should be tiered, routed, and reviewed. Use cheap local extract
 - Tesseract OCR 搞不定艺术字形和生僻字符; 顶级多模态 LLM 解析出版小说轻轻松松却浪费算力时间, 所以, 你需要分级。 Tesseract OCR can't handle artistic fonts and rare characters; top-tier multimodal LLMs can easily parse published novels but waste computing power and time, so you need a tiered approach. 
 - 同样是多模态大模型, 模型甲更擅长手写识别, 模型乙更胜任公式识别, 所以, 你需要 Agent 帮你分配调度。 Even among multimodal large models, Model A is better at handwriting recognition, while Model B excels at formula recognition, so you need an Agent to handle allocation and scheduling.
 - Agentic Loop 用于文档识别, 好处在于有校对, 即使校对选用了不带视觉功能的 LLM, 也可以从 读着是否通顺､ 排版是否错位､ 表格是否漂移 等方面校对。 The benefit of an Agentic Loop for document recognition is proofreading; even if the proofreading uses an LLM without vision capabilities, it can still check from angles like whether the text reads smoothly or whether the layout is misaligned.
+- 你搭了 12 种 OCR 模型, 要录入 34 份不同品种的档案? 交给 Agent 吧, PennyParse 帮你搞定｡ You've collected 12 OCR APIs and want to digitize 34 different varieties of documents? Leave it to the AI Agent, PennyParse will handle it for you.
 
 ---
 
