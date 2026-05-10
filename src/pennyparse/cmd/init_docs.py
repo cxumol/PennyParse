@@ -7,7 +7,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 
 from .._client import ChatClient, ChatSession
-from ..config import ensure_user_state_dir, get_user_toolbox_path, load_pp_config
+from ..config import ensure_user_state_dir, get_init_ignore_config, get_user_toolbox_path, load_pp_config
 from ..logger import get_logger
 from ..utils import extract_md_codeblock
 from . import tool as tool_cmd
@@ -43,9 +43,7 @@ def run_init_docs(
     if not chat_settings.get("model"):
         raise RuntimeError("chat model is not configured")
 
-    ignore_cfg = _as_mapping(_as_mapping(pp_cfg.get("init")).get("ignore"))
-    ignore_ext = {str(item).lstrip(".").lower() for item in (ignore_cfg.get("ext") or [])}
-    ignore_folder = {str(item) for item in (ignore_cfg.get("folder") or [])}
+    ignore_ext, ignore_folder = get_init_ignore_config(pp_cfg)
     sampling_cfg = _as_mapping(_as_mapping(pp_cfg.get("init")).get("sampling"))
 
     tools = _discover_tools(cwd=cwd, home=home, logger=logger)

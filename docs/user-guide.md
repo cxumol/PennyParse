@@ -61,6 +61,8 @@ pennyparse init docs
 
 The command writes `./.pennyparse_memory.txt`. It is prose used as guidance. It records file groups, rough parsing difficulty, and cheap preview observations so later runs can start with better tool choices.
 
+Files and folders listed under `[init.ignore]` in `pennyparse.settings.toml` are excluded when `init docs` scans the folder and when `run` walks directories.
+
 The full initialization command runs both steps:
 
 ```shell

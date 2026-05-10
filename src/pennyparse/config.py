@@ -121,6 +121,17 @@ def _coerce_web_setting(pp_cfg: Mapping[str, Any], key: str) -> Any:
     return None
 
 
+def _as_mapping(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
+
+
+def get_init_ignore_config(pp_cfg: Mapping[str, Any]) -> tuple[set[str], set[str]]:
+    ignore = _as_mapping(_as_mapping(pp_cfg.get("init")).get("ignore"))
+    ignore_ext = {str(item).lstrip(".").lower() for item in (ignore.get("ext") or [])}
+    ignore_folder = {str(item) for item in (ignore.get("folder") or [])}
+    return ignore_ext, ignore_folder
+
+
 class ChatSettings(TypedDict):
     base_url: str
     api_key: str | None

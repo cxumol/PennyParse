@@ -61,6 +61,8 @@ pennyparse init docs
 
 命令会写入 `./.pennyparse_memory.txt`。这个文件是一份自然语言记忆，记下文件分组、解析难度和低成本预览结果。它只是给后续解析看的札记，不要求手工维护结构。
 
+`pennyparse.settings.toml` 中 `[init.ignore]` 列出的文件后缀和目录，会同时被 `init docs` 扫描和 `run` 目录遍历排除。
+
 完整初始化会同时生成工具和目录记忆：
 
 ```shell

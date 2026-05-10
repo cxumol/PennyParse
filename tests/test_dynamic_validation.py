@@ -160,6 +160,20 @@ def _write_parser_batch_settings(cwd: Path, batch_size: int) -> None:
     )
 
 
+def _write_ignore_txt_settings(cwd: Path) -> None:
+    (cwd / "pennyparse.settings.toml").write_text(
+        "\n".join(
+            [
+                "[init.ignore]",
+                'ext = ["txt", "toml"]',
+                'folder = ["skipme"]',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+
 class BuiltinMetadataTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -990,6 +1004,34 @@ class RunCommandTests(unittest.TestCase):
             self.assertIn("a.txt等1份:fake_tool", memory)
             self.assertIn("b.txt等1份:fake_tool", memory)
             self.assertIn("Run summary: parsed 2, skipped 0, failed 0, output 2 file(s)", memory)
+
+    def test_run_directory_walk_respects_init_ignore_ext(self) -> None:
+        with tempfile.TemporaryDirectory() as cwd_raw, tempfile.TemporaryDirectory() as home_raw:
+            cwd = Path(cwd_raw)
+            home = Path(home_raw)
+            _write_fake_user_toolbox(home)
+            _write_ignore_txt_settings(cwd)
+            memory_path = cwd / ".pennyparse_memory.txt"
+            memory_path.write_text("initial memory\n", encoding="utf-8")
+            (cwd / "notes.txt").write_text("ignore me\n", encoding="utf-8")
+            (cwd / "report.pdf").write_text("parse me\n", encoding="utf-8")
+            skipped_dir = cwd / "skipme"
+            skipped_dir.mkdir()
+            (skipped_dir / "nested.pdf").write_text("ignore folder\n", encoding="utf-8")
+
+            with mock.patch.dict(os.environ, {key: "" for key in CHAT_ENV_KEYS}):
+                summary = run_cmd.run(
+                    out_dir=cwd / "out",
+                    cwd=cwd,
+                    home=home,
+                )
+
+            parsed_sources = {item["source_file"] for item in summary["results"]}
+            self.assertTrue(summary["ok"])
+            self.assertEqual(parsed_sources, {"report.pdf"})
+            self.assertEqual(summary["parsed_count"], 1)
+            self.assertFalse((cwd / "out" / "notes.txt.txt").exists())
+            self.assertFalse((cwd / "out" / "skipme" / "nested.pdf.txt").exists())
 
 
 class ToolCallsLoopTests(unittest.TestCase):

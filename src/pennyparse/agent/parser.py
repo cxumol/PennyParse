@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping
 
-from ..config import load_pp_config
+from ..config import get_init_ignore_config, load_pp_config
 from ..logger import get_logger
 from ..cmd import tool as tool_cmd
 from .reviewer import ReviewOutcome, review_text
@@ -63,7 +63,7 @@ def run_parser(
     pp_cfg = load_pp_config(cwd=cwd, home=home)
     output_dir = _resolve_output_dir(out_dir=out_dir, cwd=cwd, pp_cfg=pp_cfg)
     memory = _read_memory(cwd)
-    targets = _resolve_targets(paths=paths, cwd=cwd, memory=memory, output_dir=output_dir)
+    targets = _resolve_targets(paths=paths, cwd=cwd, memory=memory, output_dir=output_dir, pp_cfg=pp_cfg)
 
     results: list[dict[str, Any]] = []
     failures: list[dict[str, str]] = []
@@ -420,22 +420,45 @@ def _resolve_targets(
     cwd: Path,
     memory: str,
     output_dir: Path,
+    pp_cfg: Mapping[str, Any] | None = None,
 ) -> list[Path]:
+    ignore_ext, ignore_folder = get_init_ignore_config(pp_cfg or load_pp_config(cwd=cwd))
     if paths:
         found: list[Path] = []
         for item in paths:
             path = item if item.is_absolute() else cwd / item
             if path.is_dir():
-                found.extend(_walk_targets(path, cwd=cwd, output_dir=output_dir))
+                found.extend(
+                    _walk_targets(
+                        path,
+                        cwd=cwd,
+                        output_dir=output_dir,
+                        ignore_ext=ignore_ext,
+                        ignore_folder=ignore_folder,
+                    )
+                )
             else:
                 found.append(path)
         by_name = {path.resolve().as_posix(): path.resolve() for path in found}
         return [by_name[name] for name in sorted(by_name)]
 
-    return _walk_targets(cwd, cwd=cwd, output_dir=output_dir)
+    return _walk_targets(
+        cwd,
+        cwd=cwd,
+        output_dir=output_dir,
+        ignore_ext=ignore_ext,
+        ignore_folder=ignore_folder,
+    )
 
 
-def _walk_targets(root: Path, *, cwd: Path, output_dir: Path) -> list[Path]:
+def _walk_targets(
+    root: Path,
+    *,
+    cwd: Path,
+    output_dir: Path,
+    ignore_ext: set[str],
+    ignore_folder: set[str],
+) -> list[Path]:
     targets: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(root, topdown=True):
         current = Path(dirpath)
@@ -446,13 +469,18 @@ def _walk_targets(root: Path, *, cwd: Path, output_dir: Path) -> list[Path]:
         dirnames[:] = [
             name
             for name in dirnames
-            if not name.startswith(".") and (current / name).resolve() != output_dir
+            if not name.startswith(".")
+            and name not in ignore_folder
+            and (current / name).resolve() != output_dir
         ]
         for filename in filenames:
             if filename.startswith("."):
                 continue
             path = current / filename
             if path.resolve().is_relative_to(output_dir):
+                continue
+            ext = path.suffix.lstrip(".").lower()
+            if ext and ext in ignore_ext:
                 continue
             targets.append(path.resolve())
     targets.sort(key=lambda item: item.as_posix())

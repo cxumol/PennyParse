@@ -34,6 +34,7 @@ def run(
         cwd=cwd,
         memory=memory,
         output_dir=output_dir,
+        pp_cfg=pp_cfg,
     )
     batch_size = _parser_summary_batch(pp_cfg)
 
