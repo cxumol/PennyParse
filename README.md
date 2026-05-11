@@ -4,9 +4,9 @@
 
 [![Publish to PyPI](https://github.com/cxumol/PennyParse/actions/workflows/publish-pypi.yml/badge.svg)](https://github.com/cxumol/PennyParse/actions/workflows/publish-pypi.yml)
 [![PyPI version](https://badge.fury.io/py/pennyparse.svg)](https://badge.fury.io/py/pennyparse)
-[![PyPI Downloads](https://img.shields.io/pepy/dt/pennyparse)](https://pepy.tech/projects/pennyparse)
+<!-- [![PyPI Downloads](https://img.shields.io/pepy/dt/pennyparse)](https://pepy.tech/projects/pennyparse) -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python Versions](https://img.shields.io/pypi/pyversions/pennyparse.svg)](https://pypi.org/project/pennyparse/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/pennyparse)](https://pypi.org/project/pennyparse/)
 
 ![Brand banner](https://github.com/user-attachments/assets/c3247c7f-52db-4a7b-b46f-b543f2d88e5b)
 
@@ -20,7 +20,7 @@ Document parsing should be tiered, routed, and reviewed. Use cheap local extract
 - Tesseract OCR 搞不定艺术字形和生僻字符; 顶级多模态 LLM 解析出版小说轻轻松松却浪费算力时间, 所以, 你需要分级。 Tesseract OCR can't handle artistic fonts and rare characters; top-tier multimodal LLMs can easily parse published novels but waste computing power and time, so you need a tiered approach. 
 - 同样是多模态大模型, 模型甲更擅长手写识别, 模型乙更胜任公式识别, 所以, 你需要 Agent 帮你分配调度。 Even among multimodal large models, Model A is better at handwriting recognition, while Model B excels at formula recognition, so you need an Agent to handle allocation and scheduling.
 - Agentic Loop 用于文档识别, 好处在于有校对, 即使校对选用了不带视觉功能的 LLM, 也可以从 读着是否通顺､ 排版是否错位､ 表格是否漂移 等方面校对。 The benefit of an Agentic Loop for document recognition is proofreading; even if the proofreading uses an LLM without vision capabilities, it can still check from angles like whether the text reads smoothly or whether the layout is misaligned.
-- 你收藏了 12 种 OCR 模型, 要录入 34 份不同品种的档案? 交给 Agent 吧, PennyParse  帮你搞定｡
+- 你搭了 12 种 OCR 模型, 要录入 34 份不同品种的档案? 交给 Agent 吧, PennyParse 帮你搞定｡ You've collected 12 OCR APIs and want to digitize 34 different varieties of documents? Leave it to the AI Agent, PennyParse will handle it for you.
 
 ---
 
@@ -32,7 +32,7 @@ English | [简体中文](#简体中文)
 
 ![Core value comparison](https://github.com/user-attachments/assets/a4e0b2e2-0b49-4ae8-92e9-ee2f6eb722f5)
 
-Not "yet another doc parser", but AI agent for graded document parsing, for resource allocation with judgment.
+Instead of "yet another doc parser", PennyParse is an Agentic Workflow that orchestrates multiple parsing tools for graded document parsing and judgment-based resource allocation.
 
 A cheap parser gets the first try when the document looks easy. Costlier OCR, VLMs, and cloud APIs enter when the content needs them.
 
@@ -277,7 +277,7 @@ PennyParse is beta. The command shape is usable, and breaking changes are still 
 
 ## 为什么是 PennyParse
 
-PennyParse 并非 "Yet Another 图文识别工具"，而是元工具, 用来统筹调度多种图文识别工具的 Agentic Workflow。 把一窝鸡飞狗跳的文档，慢慢理成干净的纯文本。
+并非 "Yet Another 图文识别工具"，PennyParse 是用来统筹调度多种图文识别工具的 Agentic Workflow。 把一窝鸡飞狗跳的文档，慢慢理成干净的纯文本。
 
 容易的页，先请便宜的工具去读；读不动了，再请更贵的OCR、VLM或云端API。算力如灯油，明处不必添灯，暗处才该多照一照。
 
