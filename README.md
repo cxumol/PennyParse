@@ -20,6 +20,7 @@ Document parsing should be tiered, routed, and reviewed. Use cheap local extract
 - Tesseract OCR 搞不定艺术字形和生僻字符; 顶级多模态 LLM 解析出版小说轻轻松松却浪费算力时间, 所以, 你需要分级。 Tesseract OCR can't handle artistic fonts and rare characters; top-tier multimodal LLMs can easily parse published novels but waste computing power and time, so you need a tiered approach. 
 - 同样是多模态大模型, 模型甲更擅长手写识别, 模型乙更胜任公式识别, 所以, 你需要 Agent 帮你分配调度。 Even among multimodal large models, Model A is better at handwriting recognition, while Model B excels at formula recognition, so you need an Agent to handle allocation and scheduling.
 - Agentic Loop 用于文档识别, 好处在于有校对, 即使校对选用了不带视觉功能的 LLM, 也可以从 读着是否通顺､ 排版是否错位､ 表格是否漂移 等方面校对。 The benefit of an Agentic Loop for document recognition is proofreading; even if the proofreading uses an LLM without vision capabilities, it can still check from angles like whether the text reads smoothly or whether the layout is misaligned.
+- 你收藏了 12 种 OCR 模型, 要录入 34 份不同品种的档案? 交给 Agent 吧, PennyParse  帮你搞定｡
 
 ---
 
