@@ -10,17 +10,24 @@
 
 ![Brand banner](https://github.com/user-attachments/assets/c3247c7f-52db-4a7b-b46f-b543f2d88e5b)
 
-> 丝帛简牍数码书，千金半厘辨分殊。  
-> 何须一模破万卷，自能调度在慧枢。 
+
 
 > Penny parse, penny wise.
 
 Document parsing should be tiered, routed, and reviewed. Use cheap local extraction when it is enough. Escalate only when the AI agent finds the page needs it.
 
-- Tesseract OCR 搞不定艺术字形和生僻字符; 顶级多模态 LLM 解析出版小说轻轻松松却浪费算力时间, 所以, 你需要分级。 Tesseract OCR can't handle artistic fonts and rare characters; top-tier multimodal LLMs can easily parse published novels but waste computing power and time, so you need a tiered approach. 
-- 同样是多模态大模型, 模型甲更擅长手写识别, 模型乙更胜任公式识别, 所以, 你需要 Agent 帮你分配调度。 Even among multimodal large models, Model A is better at handwriting recognition, while Model B excels at formula recognition, so you need an Agent to handle allocation and scheduling.
-- Agentic Loop 用于文档识别, 好处在于有校对, 即使校对选用了不带视觉功能的 LLM, 也可以从 读着是否通顺､ 排版是否错位､ 表格是否漂移 等方面校对。 The benefit of an Agentic Loop for document recognition is proofreading; even if the proofreading uses an LLM without vision capabilities, it can still check from angles like whether the text reads smoothly or whether the layout is misaligned.
-- 你搭了 12 种 OCR 模型, 要录入 34 份不同品种的档案? 交给 Agent 吧, PennyParse 帮你搞定｡ You've collected 12 OCR APIs and want to digitize 34 different varieties of documents? Leave it to the AI Agent, PennyParse will handle it for you.
+- Tesseract OCR can't handle artistic fonts and rare characters; top-tier multimodal LLMs can easily parse published novels but waste computing power and time, so you need a tiered approach. 
+- Even among multimodal large models, Model A is better at handwriting recognition, while Model B excels at formula recognition, so you need an Agent to handle allocation and scheduling.
+- The benefit of an Agentic Loop for document recognition is proofreading; even if the proofreading uses an LLM without vision capabilities, it can still check from angles like whether the text reads smoothly or whether the layout is misaligned.
+- You've collected 12 OCR APIs and want to digitize 34 different varieties of documents? Leave it to the AI Agent, PennyParse will handle it for you.
+
+> 丝帛简牍数码书，千金半厘辨分殊。  
+> 何须一模破万卷，自能调度在慧枢。
+
+- Tesseract OCR 搞不定艺术字形和生僻字符; 顶级多模态 LLM 解析出版小说轻轻松松却浪费算力时间, 所以, 你需要分级。
+- 同样是多模态大模型, 模型甲更擅长手写识别, 模型乙更胜任公式识别, 所以, 你需要 Agent 帮你分配调度。
+- Agentic Loop 用于文档识别, 好处在于有校对, 即使校对选用了不带视觉功能的 LLM, 也可以从 读着是否通顺､ 排版是否错位､ 表格是否漂移 等方面校对。
+- 你搭了 12 种 OCR 模型, 要录入 34 份不同品种的档案? 放心交给 Agent, 让 PennyParse 帮你搞定｡
 
 ---
 
